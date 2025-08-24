@@ -1576,16 +1576,87 @@ def api_smart_analysis():
             # Smart grouping with basic quality hints but no full analysis
             groups = scanner.group_photos_by_time_and_camera(photo_data_list)
         
-        # Convert to clusters for dashboard display
+        # Priority scoring helper functions
+        def _calculate_priority_score(group):
+            """Calculate real priority score (0-100) based on duplicate confidence indicators"""
+            if not group.photos or len(group.photos) < 2:
+                return 0
+            
+            # Factor 1: File size factor (40%) - Larger files = higher priority for savings
+            avg_file_size = sum(p.file_size for p in group.photos) / len(group.photos)
+            file_size_mb = avg_file_size / (1024 * 1024)
+            # Scale: 0MB=0, 10MB=50, 20MB+=100
+            file_size_factor = min(100, (file_size_mb / 10.0) * 50)
+            
+            # Factor 2: Time proximity factor (30%) - Closer timestamps = higher confidence
+            timestamps = [p.timestamp for p in group.photos if p.timestamp]
+            if len(timestamps) >= 2:
+                time_span = max(timestamps) - min(timestamps)
+                time_span_seconds = time_span.total_seconds()
+                # Scale: 0s=100, 10s=80, 60s=20, 300s+=0
+                time_proximity_factor = max(0, 100 - (time_span_seconds / 3.0))
+            else:
+                time_proximity_factor = 0
+                
+            # Factor 3: Group confidence factor (20%) - More photos + same camera = higher confidence
+            group_size_factor = min(100, (len(group.photos) - 1) * 25)  # 2 photos=25, 3=50, 4+=75-100
+            
+            # Same camera bonus
+            cameras = set(p.camera_model for p in group.photos if p.camera_model)
+            camera_factor = 100 if len(cameras) == 1 and list(cameras)[0] else 50
+            group_confidence_factor = (group_size_factor + camera_factor) / 2
+            
+            # Factor 4: Similarity factor (10%) - Quality scores and potential visual similarity  
+            quality_scores = [p.quality_score for p in group.photos if p.quality_score > 0]
+            if quality_scores:
+                # High variation in quality scores suggests one clear best photo
+                quality_variation = max(quality_scores) - min(quality_scores) if len(quality_scores) > 1 else 0
+                similarity_factor = min(100, quality_variation * 2)  # Higher variation = clearer duplicate
+            else:
+                similarity_factor = 50  # Neutral if no quality data
+            
+            # Combine factors with weights
+            priority_score = (
+                file_size_factor * 0.4 +
+                time_proximity_factor * 0.3 + 
+                group_confidence_factor * 0.2 +
+                similarity_factor * 0.1
+            )
+            
+            priority_score = min(100, max(0, priority_score))
+            
+            # Debug logging for priority calculation
+            print(f"📊 Group {group.group_id}: score={priority_score:.1f} (size={file_size_factor:.1f}, time={time_proximity_factor:.1f}, group={group_confidence_factor:.1f}, sim={similarity_factor:.1f})")
+            
+            return priority_score
+        
+        def _score_to_priority_level(score):
+            """Convert 0-100 priority score to P1-P10 level"""
+            if score >= 90: return "P1"    # Perfect matches - large files, perfect timing  
+            elif score >= 80: return "P2"  # Very high confidence - burst photos, large savings
+            elif score >= 70: return "P3"  # High confidence - clear duplicates, good savings
+            elif score >= 60: return "P4"  # High-medium confidence
+            elif score >= 50: return "P5"  # Medium+ confidence  
+            elif score >= 40: return "P6"  # Medium confidence
+            elif score >= 30: return "P7"  # Medium-low confidence
+            elif score >= 20: return "P8"  # Low+ confidence
+            elif score >= 10: return "P9"  # Low confidence
+            else: return "P10"              # Lowest confidence
+        
+        # Convert to clusters for dashboard display with real priority scoring
         clusters = []
         for i, group in enumerate(groups[:50]):  # Limit to 50 groups
+            # Calculate real priority score based on duplicate confidence
+            priority_score = _calculate_priority_score(group)
+            priority_level = _score_to_priority_level(priority_score)
+            
             cluster = type('Cluster', (), {
                 'cluster_id': f"cluster_{i}",  # Fix: use cluster_id instead of group_id
                 'group_id': f"cluster_{i}",    # Keep group_id for compatibility
                 'photos': group.photos,
-                'duplicate_probability_score': 0.7,  # Estimated score
+                'duplicate_probability_score': priority_score,  # Real confidence score
                 'potential_savings_bytes': group.potential_savings_bytes,
-                'priority_level': f"P{min(i//5 + 1, 10)}",  # Distribute across P1-P10
+                'priority_level': priority_level,  # Real P1-P10 based on confidence
                 'recommended_photo': group.photos[0] if group.photos else None,
                 'photo_uuids': [p.uuid for p in group.photos]  # Add photo_uuids for legacy compatibility
             })()
@@ -1642,7 +1713,14 @@ def api_smart_analysis():
             'cluster_count': len(clusters)
         }
         
+        # Log priority distribution summary
+        priority_distribution = {}
+        for cluster in clusters:
+            level = cluster.priority_level
+            priority_distribution[level] = priority_distribution.get(level, 0) + 1
+        
         print(f"✅ Smart analysis complete: {len(groups)} groups, {len(clusters)} clusters")
+        print(f"🎯 Real priority distribution: {dict(sorted(priority_distribution.items()))}")
         print(f"🔄 Updated both cache systems for unified data access")
         
         return jsonify({
