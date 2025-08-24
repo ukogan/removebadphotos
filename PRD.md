@@ -103,13 +103,101 @@ User has thousands of similar photos in macOS Photos library from burst shots an
 - User can manually delete photos from smart album in Photos app
 - Deletion lists are accurate and complete
 
-## Future Stages (Not in MVP)
+### Stage 5: Enhanced Intelligence & Visual Similarity (Week 9-10)
+**Goal:** Improve grouping accuracy and prevent different subjects from being grouped together
 
-### Stage 5: Enhanced Intelligence
+**User Stories:**
+- As a user, I want only visually similar photos grouped so I don't see unrelated images together
+- As a user, I want burst mode photos handled with shorter time windows so I get better precision
+- As a user, I want improved quality analysis so the best photos are accurately selected
+- As a user, I want composition analysis so similar poses/angles are identified
+
+**Technical Deliverables:**
+- Visual similarity filtering using perceptual hash comparison
+- Adaptive time windows (3 seconds for burst mode, 10 seconds for normal)
+- Advanced image quality analysis with computer vision
+- Composition similarity detection
 - Face detection and expression analysis
-- Advanced composition analysis
-- Machine learning quality assessment
-- Automatic best-photo selection improvements
+- Filtering threshold configuration (70% similarity minimum)
+
+**Success Criteria:**
+- No more than 5% of groups contain visually unrelated photos
+- Burst mode photos get appropriate grouping (3-second windows)
+- Quality recommendations improve by >80% accuracy
+- User can configure similarity thresholds
+
+## Visual Design Enhancement Stages (Based on UX Research)
+
+### Stage 3.5: Visual Foundation (Phase 1 - Critical Fixes)
+**Goal:** Establish professional, trustworthy visual design aligned with photo deduplication standards
+
+**User Stories:**
+- As a user, I want a professional-looking interface so I trust the tool with my photos
+- As a user, I want conservative selection defaults so I don't accidentally delete photos
+- As a user, I want clear visual hierarchy so I can focus on photo comparison decisions
+
+**Critical Issues to Fix:**
+- Replace purple gradient dashboard with professional gray palette (#f8f9fa backgrounds)
+- Remove all pre-selection defaults - require explicit user action for deletion marking
+- Convert to side-by-side comparison cards instead of grid layout
+- Implement color-coded selection: Green (keep), Amber (review), Red (delete only in confirmation)
+- Use system fonts (-apple-system) for better macOS integration
+- Add 8px spacing system for visual consistency
+
+**Success Criteria:**
+- Interface looks professional and trustworthy
+- No photos pre-selected for deletion by default
+- Clear visual distinction between keep/review/delete states
+- Consistent spacing and typography throughout
+
+### Stage 4.5: Visual Enhancement (Phase 2 - User Experience)
+**Goal:** Improve interaction patterns and information display based on deduplication tool research
+
+**User Stories:**
+- As a user, I want hover-based metadata so I can get details without cluttering the interface
+- As a user, I want similarity scores displayed so I understand why photos are grouped
+- As a user, I want clear feedback when I make selections so I know the system responded
+
+**Enhancement Features:**
+- Add hover-based metadata overlays (file size, resolution, timestamp)
+- Implement similarity confidence scores (percentage display)
+- Add quality assessment indicators (stars, ratings, or badges)
+- Single-click selection with immediate visual feedback
+- Batch operation counters ("5 photos selected")
+- Multi-step confirmation dialogs for safety
+- Prominent undo/recovery options
+
+**Success Criteria:**
+- Metadata appears cleanly on hover without layout shifts
+- Users understand why photos are grouped together
+- Clear feedback for all user interactions
+- Conservative approach to destructive actions
+
+### Stage 5.5: Visual Polish (Phase 3 - Professional Finish)
+**Goal:** Advanced visual features and micro-interactions for professional-grade experience
+
+**User Stories:**
+- As a user, I want smooth transitions so the interface feels modern and polished
+- As a user, I want expandable groups so I can manage large result sets efficiently
+- As a user, I want professional dashboard styling so the tool feels like commercial software
+
+**Polish Features:**
+- Professional dashboard redesign with clean statistics display
+- Expandable duplicate groups with clear hierarchy
+- Tree view options for large result sets
+- Smooth transitions for all state changes
+- Hover effects with subtle scaling (1.02x)
+- Advanced progress indicators and loading states
+- Smart grouping by similarity threshold with visual controls
+- Professional action buttons and modern card layouts
+
+**Success Criteria:**
+- Interface feels as polished as commercial photo management tools
+- Users can efficiently navigate large sets of duplicates
+- All interactions feel smooth and responsive
+- Visual design builds user confidence and trust
+
+## Future Stages (Not in MVP)
 
 ### Stage 6: Integration & Scaling  
 - Google Photos API integration
@@ -117,7 +205,13 @@ User has thousands of similar photos in macOS Photos library from burst shots an
 - Progress indicators and background processing
 - Configuration and preferences system
 
-### Stage 7: Gamification & UX
+### Stage 7: Machine Learning & Advanced Analysis
+- Deep learning quality assessment
+- Automatic best-photo selection improvements using ML
+- Advanced composition analysis with neural networks
+- Object detection and scene understanding
+
+### Stage 8: Gamification & UX
 - Daily review game mode
 - Storage achievement tracking
 - Social features (share before/after stats)

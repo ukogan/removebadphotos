@@ -1363,7 +1363,7 @@ def api_stats():
         
         # Estimate full library stats
         db = scanner.get_photosdb()
-        full_photo_count = len(db.photos(intrash=False))
+        full_photo_count = len(db.photos(intrash=False, movies=False))
         
         # Scale up estimates based on sample
         if total_photos > 0:
@@ -1427,7 +1427,7 @@ def api_library_stats():
         db = scanner.get_photosdb()
         
         # Get basic stats without expensive operations
-        photos = db.photos(intrash=False)
+        photos = db.photos(intrash=False, movies=False)
         total_photos = len(photos)
         
         if total_photos == 0:
@@ -1498,7 +1498,7 @@ def api_filter_preview():
         
         scanner = PhotoScanner()
         db = scanner.get_photosdb()
-        photos = db.photos(intrash=False)
+        photos = db.photos(intrash=False, movies=False)
         
         total_photos = len(photos)
         if total_photos == 0:
@@ -2176,7 +2176,7 @@ def api_thumbnail(photo_uuid):
         
         # Find the photo in our database using the photos list
         db = scanner.get_photosdb()
-        photos = db.photos(intrash=False)
+        photos = db.photos(intrash=False, movies=False)
         photo = None
         
         for p in photos:
@@ -2272,7 +2272,7 @@ def api_full_image(photo_uuid):
     try:
         # Find the photo in our database using the photos list
         db = scanner.get_photosdb()
-        photos = db.photos(intrash=False)
+        photos = db.photos(intrash=False, movies=False)
         photo = None
         
         for p in photos:
@@ -2365,7 +2365,7 @@ def api_open_photo(photo_uuid):
     try:
         # Find the photo in our database
         db = scanner.get_photosdb()
-        photos = db.photos(intrash=False)
+        photos = db.photos(intrash=False, movies=False)
         photo = None
         
         for p in photos:
@@ -2513,7 +2513,7 @@ def api_complete_workflow():
         
         # Get photo details for export
         db = scanner.get_photosdb()
-        photos = db.photos(intrash=False)
+        photos = db.photos(intrash=False, movies=False)
         photo_lookup = {p.uuid: p for p in photos}
         
         export_data = []

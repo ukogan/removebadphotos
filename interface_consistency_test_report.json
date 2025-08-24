@@ -1,0 +1,44 @@
+{
+  "test_timestamp": "2025-08-24 07:46:19",
+  "test_results": {
+    "initial_dashboard_stats": {
+      "total_photos": "14,638",
+      "library_size": "57.9 GB",
+      "estimated_duplicates": "TBD",
+      "potential_savings": "TBD",
+      "date_range": "1980-2025",
+      "cluster_count": "TBD",
+      "analysis_completed": false
+    },
+    "dashboard_after_analysis": {
+      "total_photos": "14,638",
+      "library_size": "57.9 GB",
+      "estimated_duplicates": "TBD",
+      "potential_savings": "TBD",
+      "date_range": "1980-2025",
+      "cluster_count": "TBD",
+      "analysis_completed": true
+    },
+    "legacy_interface_stats": {
+      "total_photos": "0",
+      "library_size": null,
+      "estimated_duplicates": "3545",
+      "potential_savings": null,
+      "date_range": null,
+      "cluster_count": "15",
+      "analysis_completed": true
+    },
+    "consistency_check": {
+      "differences_found": 6,
+      "differences": [
+        "total_photos: 14,638 vs 0",
+        "library_size: 57.9 GB vs None",
+        "estimated_duplicates: TBD vs 3545",
+        "potential_savings: TBD vs None",
+        "date_range: 1980-2025 vs None",
+        "cluster_count: TBD vs 15"
+      ],
+      "overall_consistency": "PARTIAL"
+    }
+  }
+}

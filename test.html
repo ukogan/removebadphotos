@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Test</title>
+</head>
+<body>
+    <h1>Test Page</h1>
+    <div id="status">Loading...</div>
+    
+    <script>
+        console.log('Script starting...');
+        
+        setTimeout(function() {
+            console.log('About to fetch stats...');
+            fetch('http://127.0.0.1:5003/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Stats received:', data);
+                    document.getElementById('status').textContent = 'Stats loaded: ' + data.total_photos + ' photos';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('status').textContent = 'Error: ' + error.message;
+                });
+        }, 1000);
+    </script>
+</body>
+</html>

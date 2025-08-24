@@ -1,0 +1,1179 @@
+<!DOCTYPE html><html><head>
+        <title>Photo Dedup Tool</title>
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='18' height='14' rx='2' fill='%23e0e0e0' stroke='%23999' stroke-width='1'/%3E%3Crect x='3' y='5' width='18' height='2' fill='%23999'/%3E%3Crect x='5' y='8' width='3' height='2' rx='1' fill='%23666'/%3E%3Ccircle cx='16' cy='12' r='2' fill='%23666'/%3E%3Crect x='11' y='13' width='18' height='14' rx='2' fill='%23fff' stroke='%23666' stroke-width='1'/%3E%3Crect x='11' y='13' width='18' height='2' fill='%23666'/%3E%3Crect x='13' y='16' width='3' height='2' rx='1' fill='%23333'/%3E%3Ccircle cx='24' cy='20' r='2' fill='%23333'/%3E%3C/svg%3E">
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                max-width: 1200px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            .header {
+                background-color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+            }
+            .stat-card {
+                background-color: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                text-align: center;
+            }
+            .stat-number {
+                font-size: 2em;
+                font-weight: bold;
+                color: #2196F3;
+            }
+            .stat-label {
+                color: #666;
+                margin-top: 5px;
+            }
+            .status {
+                margin-top: 20px;
+                padding: 15px;
+                border-radius: 8px;
+                text-align: center;
+            }
+            .success { background-color: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+            .error { background-color: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+            .loading { background-color: #d9edf7; color: #31708f; border: 1px solid #bce8f1; }
+            
+            .controls {
+                background-color: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                margin-top: 20px;
+                text-align: center;
+            }
+            
+            .btn {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin: 5px;
+                font-size: 16px;
+            }
+            .btn:hover { background-color: #1976D2; }
+            .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+            
+            .groups-container {
+                margin-top: 20px;
+            }
+            
+            .group-card {
+                background-color: white;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+                overflow: hidden;
+            }
+            
+            .group-header {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-bottom: 1px solid #dee2e6;
+            }
+            
+            .group-title {
+                font-size: 18px;
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 5px;
+            }
+            
+            .group-meta {
+                font-size: 14px;
+                color: #666;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 10px;
+                margin-top: 10px;
+            }
+            
+            .photos-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .photo-card {
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                padding: 16px;
+                margin: 8px;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                background-color: #f8f9fa;
+                position: relative;
+                opacity: 0.8;
+            }
+            
+            .photo-card:not(.selected)::after {
+                content: "🛡️ KEEP";
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: #28a745;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: bold;
+                z-index: 2;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            
+            .photo-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            }
+            
+            .photo-card.recommended {
+                border-color: #ffc107;
+                background-color: #fff9e6;
+                box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+                position: relative;
+            }
+            
+            .photo-card.recommended::after {
+                content: "⭐ RECOMMENDED";
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                background: #ffc107;
+                color: #212529;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: bold;
+                z-index: 2;
+            }
+            
+            .photo-card.selected {
+                border-color: #dc3545;
+                background-color: white;
+                box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+                position: relative;
+                opacity: 1;
+                transform: translateY(-1px);
+            }
+            
+            .photo-card.selected::before {
+                content: "❌ DELETE";
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: #dc3545;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: bold;
+                z-index: 2;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            .photo-card.selected::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(220, 53, 69, 0.15);
+                border-radius: 8px;
+                z-index: 1;
+            }
+            
+            .photo-thumbnail {
+                width: 100%;
+                max-width: 500px;
+                height: 400px;
+                object-fit: contain;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                background-color: #f5f5f5;
+            }
+            
+            .photo-loading {
+                width: 100%;
+                height: 400px;
+                background-color: #f0f0f0;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #666;
+                margin-bottom: 10px;
+            }
+            
+            .photo-info {
+                font-size: 12px;
+                color: #666;
+                margin-top: 5px;
+            }
+            
+            .photo-filename {
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 5px;
+                font-size: 14px;
+            }
+            
+            
+            .photo-filename {
+                cursor: pointer;
+                color: #2196F3;
+                text-decoration: underline;
+            }
+            
+            .photo-filename:hover {
+                color: #1976D2;
+            }
+            
+            .photo-thumbnail {
+                cursor: pointer;
+            }
+            
+            /* Full-screen preview modal */
+            .preview-modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.95);
+                z-index: 10000;
+                cursor: pointer;
+            }
+            
+            .preview-content {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+            }
+            
+            .preview-image {
+                max-width: 95vw;
+                max-height: 90vh;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                border: 2px solid #fff;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+                /* Ensure minimum size for tiny images */
+                min-width: 400px;
+                min-height: 300px;
+            }
+            
+            .preview-info {
+                color: white;
+                text-align: center;
+                margin-top: 20px;
+                font-size: 16px;
+            }
+            
+            .preview-controls {
+                position: absolute;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                color: white;
+                text-align: center;
+                font-size: 14px;
+                opacity: 0.8;
+            }
+            
+            .preview-nav {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 40px;
+                color: white;
+                cursor: pointer;
+                user-select: none;
+                opacity: 0.6;
+                transition: opacity 0.3s;
+                width: 60px;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.5);
+                border-radius: 50%;
+            }
+            
+            .preview-nav:hover {
+                opacity: 1;
+            }
+            
+            .preview-nav.prev {
+                left: 30px;
+            }
+            
+            .preview-nav.next {
+                right: 30px;
+            }
+            
+            .preview-close {
+                position: absolute;
+                top: 20px;
+                right: 30px;
+                font-size: 40px;
+                color: white;
+                cursor: pointer;
+                opacity: 0.6;
+                transition: opacity 0.3s;
+            }
+            
+            .preview-close:hover {
+                opacity: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🖼️ Photo Deduplication Tool</h1>
+            <p>Stage 3: Visual Interface</p>
+            <p><strong>Status:</strong> Interactive photo selection with thumbnails - click photos to select/deselect for keeping</p>
+        </div>
+
+        <div id="status" class="status success">✅ Successfully connected to macOS Photos library</div>
+
+        <div id="stats" class="stats" style="display: grid;">
+                            <div class="stat-card">
+                                <div class="stat-number">14,638</div>
+                                <div class="stat-label">Total Photos</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">10</div>
+                                <div class="stat-label">Sample Groups Found</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">~9087 MB</div>
+                                <div class="stat-label">Est. Savings</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">193</div>
+                                <div class="stat-label">Photos Analyzed</div>
+                            </div>
+                        </div>
+
+        <div class="controls" style="display: block;" id="controls">
+            <button class="btn" onclick="loadGroups()" id="loadGroupsBtn">🔍 Analyze Photo Groups</button>
+            <span id="groupStatus" style="margin-left: 15px;"></span>
+        </div>
+
+        <div class="controls" style="display: none;" id="selectionSummary">
+            <h3>📊 Selection Summary</h3>
+            <div id="summaryStats"></div>
+            <button class="btn" onclick="confirmDeletions()" id="confirmBtn" style="background-color: #FF5722;">🗑️ Confirm Deletions</button>
+        </div>
+
+        <div id="groupsContainer" class="groups-container">
+            <!-- Photo groups will be populated here -->
+        </div>
+
+        <!-- Full-screen preview modal -->
+        <div id="previewModal" class="preview-modal" onclick="closePreview()">
+            <div class="preview-content" onclick="event.stopPropagation()">
+                <div class="preview-close" onclick="closePreview()">×</div>
+                <div class="preview-nav prev" id="prevPhoto" onclick="navigatePhoto(-1)">‹</div>
+                <div class="preview-nav next" id="nextPhoto" onclick="navigatePhoto(1)">›</div>
+                <img id="previewImage" class="preview-image" src="" alt="">
+                <div class="preview-info">
+                    <div id="previewFilename" style="font-weight: bold; margin-bottom: 10px;"></div>
+                    <div id="previewMetadata"></div>
+                </div>
+                <div class="preview-controls">
+                    Press ESC to close • Use arrow keys to navigate
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let groupsLoaded = false;
+            let photoSelections = {}; // Track user selections by group_id
+
+            // Load stats immediately (working approach)
+            console.log('Script starting...');
+            
+            setTimeout(function() {
+                console.log('About to fetch stats...');
+                fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const statusDiv = document.getElementById('status');
+                    const statsDiv = document.getElementById('stats');
+                    const controlsDiv = document.getElementById('controls');
+                    
+                    if (data.success) {
+                        statusDiv.className = 'status success';
+                        statusDiv.innerHTML = '✅ Successfully connected to macOS Photos library';
+                        
+                        // Show stats
+                        statsDiv.style.display = 'grid';
+                        statsDiv.innerHTML = `
+                            <div class="stat-card">
+                                <div class="stat-number">${data.total_photos.toLocaleString()}</div>
+                                <div class="stat-label">Total Photos</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.sample_groups || 0}</div>
+                                <div class="stat-label">Sample Groups Found</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.estimated_savings}</div>
+                                <div class="stat-label">Est. Savings</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.sample_photos || 0}</div>
+                                <div class="stat-label">Photos Analyzed</div>
+                            </div>
+                        `;
+                        
+                        // Show controls
+                        controlsDiv.style.display = 'block';
+                    } else {
+                        statusDiv.className = 'status error';
+                        statusDiv.innerHTML = `❌ Error: ${data.error}`;
+                    }
+                })
+                .catch(error => {
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ Failed to connect: ${error}`;
+                });
+            }, 1000); // End setTimeout
+
+            // Global functions accessible to HTML onclick handlers
+            let progressInterval = null;
+            
+            function formatTime(seconds) {
+                if (seconds < 60) return `${Math.round(seconds)}s`;
+                if (seconds < 3600) return `${Math.round(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+                return `${Math.round(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}m`;
+            }
+            
+            function updateProgress() {
+                fetch('/api/progress')
+                    .then(response => response.json())
+                    .then(progress => {
+                        const status = document.getElementById('groupStatus');
+                        
+                        if (progress.active) {
+                            const percentage = progress.total > 0 ? Math.round((progress.progress / progress.total) * 100) : 0;
+                            const elapsed = formatTime(progress.elapsed_time);
+                            const remaining = progress.estimated_time > 0 ? formatTime(progress.estimated_time) : '';
+                            
+                            let statusText = `🔄 ${progress.step} (${percentage}%)`;
+                            if (elapsed) statusText += ` • ${elapsed} elapsed`;
+                            if (remaining) statusText += ` • ~${remaining} remaining`;
+                            
+                            status.innerHTML = statusText;
+                            status.title = progress.tooltip || '';
+                        }
+                    })
+                    .catch(error => {
+                        console.log('Progress polling error:', error);
+                    });
+            }
+
+            function loadGroups() {
+                if (groupsLoaded) return;
+                
+                const btn = document.getElementById('loadGroupsBtn');
+                const status = document.getElementById('groupStatus');
+                
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Analyzing...';
+                status.innerHTML = '🔄 Starting analysis...';
+                status.title = 'Preparing to analyze your photo library for duplicates';
+                
+                // Start progress polling
+                progressInterval = setInterval(updateProgress, 1000);
+                
+                // Check for priority and limit parameters from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const priority = urlParams.get('priority');
+                const limit = urlParams.get('limit') || '10';
+                
+                let apiUrl;
+                if (priority) {
+                    // Use priority-filtered API endpoint (already analyzed)
+                    apiUrl = `/api/groups?priority=${priority}&limit=${limit}`;
+                } else {
+                    // Use full analysis API endpoint
+                    apiUrl = `/api/groups?limit=${limit}`;
+                }
+                
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Stop progress polling
+                        if (progressInterval) {
+                            clearInterval(progressInterval);
+                            progressInterval = null;
+                        }
+                        
+                        if (data.success) {
+                            allGroups = data.groups; // Store for calculations
+                            displayGroups(data.groups);
+                            status.innerHTML = `✅ Analysis Complete • Found ${data.total_groups} groups`;
+                            status.title = 'Photo analysis completed successfully';
+                            btn.innerHTML = '✅ Analysis Complete';
+                            groupsLoaded = true;
+                        } else {
+                            status.innerHTML = `❌ Error: ${data.error}`;
+                            status.title = '';
+                            btn.disabled = false;
+                            btn.innerHTML = '🔍 Analyze Photo Groups';
+                        }
+                    })
+                    .catch(error => {
+                        // Stop progress polling
+                        if (progressInterval) {
+                            clearInterval(progressInterval);
+                            progressInterval = null;
+                        }
+                        
+                        status.innerHTML = `❌ Failed to load: ${error}`;
+                        status.title = '';
+                        btn.disabled = false;
+                        btn.innerHTML = '🔍 Analyze Photo Groups';
+                    });
+            }
+
+            function displayGroups(groups) {
+                const container = document.getElementById('groupsContainer');
+                
+                if (groups.length === 0) {
+                    container.innerHTML = '<div class="status">ℹ️ No duplicate photo groups found in sample</div>';
+                    return;
+                }
+                
+                let html = '';
+                
+                groups.forEach(group => {
+                    const timeSpan = new Date(group.time_window_start).toLocaleString() + 
+                                   ' - ' + new Date(group.time_window_end).toLocaleString();
+                    
+                    // Initialize selections for this group with NO photos selected (require explicit user action)
+                    if (!photoSelections[group.group_id]) {
+                        photoSelections[group.group_id] = [];
+                    }
+                    
+                    html += `
+                        <div class="group-card">
+                            <div class="group-header">
+                                <div class="group-title">📁 ${group.group_id}</div>
+                                <div class="group-meta">
+                                    <div>📅 <strong>Time:</strong> ${timeSpan}</div>
+                                    <div>📷 <strong>Camera:</strong> ${group.camera_model}</div>
+                                    <div>📸 <strong>Photos:</strong> ${group.photo_count}</div>
+                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb} MB</div>
+                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb} MB</div>
+                                </div>
+                            </div>
+                            <div class="group-actions" style="margin: 16px 0; display: flex; justify-content: space-between; align-items: center;">
+                                <div class="primary-actions">
+                                    <button class="action-btn keep-all-btn" onclick="keepAllPhotos('${group.group_id}')" style="background: #28a745; color: white; border: none; padding: 10px 16px; margin-right: 8px; border-radius: 6px; cursor: pointer; font-weight: 600;">🛡️ Keep All Photos</button>
+                                    <button class="action-btn delete-duplicates-btn" onclick="deleteAllButOne('${group.group_id}')" style="background: #dc3545; color: white; border: none; padding: 10px 16px; margin-right: 8px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Delete Duplicates</button>
+                                    <button class="action-btn delete-all-btn" onclick="deleteAllPhotos('${group.group_id}')" style="background: #721c24; color: white; border: none; padding: 10px 16px; margin-right: 8px; border-radius: 6px; cursor: pointer; font-weight: bold;">❌ Delete All Photos</button>
+                                </div>
+                                <div class="secondary-actions">
+                                    <button class="action-btn why-grouped-btn" onclick="showWhyGrouped('${group.group_id}')" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">ℹ️ Grouping Info</button>
+                                </div>
+                            </div>
+                            <div class="photos-grid">
+                    `;
+                    
+                    group.photos.forEach(photo => {
+                        const timestamp = photo.timestamp ? new Date(photo.timestamp).toLocaleString() : 'Unknown';
+                        const resolution = photo.width && photo.height ? `${photo.width}×${photo.height}` : 'Unknown';
+                        const fileSize = photo.file_size > 0 ? `${(photo.file_size / (1024*1024)).toFixed(1)} MB` : 'Unknown';
+                        
+                        const isSelected = photoSelections[group.group_id].includes(photo.uuid);
+                        const cardClasses = ['photo-card'];
+                        if (isSelected) cardClasses.push('selected'); // Selected = DELETE target
+                        
+                        html += `
+                            <div class="${cardClasses.join(' ')}" data-group="${group.group_id}" data-photo="${photo.uuid}" data-photo-index="${group.photos.indexOf(photo)}">
+                                <div class="photo-loading" id="loading_${photo.uuid}">📷 Loading...</div>
+                                <img class="photo-thumbnail" 
+                                     src="/api/thumbnail/${photo.uuid}" 
+                                     alt="${photo.filename}"
+                                     style="display: none;"
+                                     onload="this.style.display='block'; document.getElementById('loading_${photo.uuid}').style.display='none';"
+                                     onerror="this.style.display='none'; document.getElementById('loading_${photo.uuid}').innerHTML='❌ Could not load image';"
+                                     onclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});">
+                                <div class="photo-filename" onclick="event.stopPropagation(); openInPhotos('${photo.uuid}')">${photo.filename}</div>
+                                <div class="photo-info">
+                                    <div>📅 ${timestamp}</div>
+                                    <div>📐 ${resolution}</div>
+                                    <div>💾 ${fileSize}</div>
+                                    <div>🎯 Quality: ${photo.quality_score.toFixed(1)}/100</div>
+                                </div>
+                                <div class="photo-selection-area" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; background: ${isSelected ? 'rgba(220,53,69,0.8)' : 'rgba(40,167,69,0.8)'}; border-radius: 50%; margin: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: white; font-weight: bold;">
+                                    ${isSelected ? '❌' : '🛡️'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                });
+                
+                container.innerHTML = html;
+                updateSelectionSummary();
+            }
+
+            function togglePhotoSelection(groupId, photoUuid) {
+                const selections = photoSelections[groupId] || [];
+                const index = selections.indexOf(photoUuid);
+                
+                if (index === -1) {
+                    // Add to deletion selection (mark for DELETE)
+                    selections.push(photoUuid);
+                } else {
+                    // Remove from deletion selection (mark for KEEP)
+                    selections.splice(index, 1);
+                }
+                
+                photoSelections[groupId] = selections;
+                updatePhotoCards(groupId);
+                updateSelectionSummary();
+            }
+
+            function updatePhotoCards(groupId) {
+                const cards = document.querySelectorAll(`[data-group="${groupId}"]`);
+                
+                cards.forEach(card => {
+                    const photoUuid = card.getAttribute('data-photo');
+                    const isSelected = photoSelections[groupId].includes(photoUuid);
+                    // Update card classes based on selection state only
+                    card.className = 'photo-card';
+                    if (isSelected) {
+                        card.className += ' selected'; // Selected = DELETE target
+                    }
+                });
+            }
+
+            function keepAllPhotos(groupId) {
+                // Keep all photos (select NONE for deletion)
+                const group = allGroups.find(g => g.group_id === groupId);
+                if (group) {
+                    photoSelections[groupId] = [];
+                    updatePhotoCards(groupId);
+                    updateSelectionSummary();
+                }
+            }
+
+            function deleteAllButOne(groupId) {
+                // Delete all except recommended photo (select all EXCEPT recommended for deletion)
+                const group = allGroups.find(g => g.group_id === groupId);
+                if (group) {
+                    const recommendedPhoto = group.photos.find(photo => photo.recommended);
+                    const photoToKeep = recommendedPhoto || group.photos[0];
+                    
+                    // Select all photos EXCEPT the one to keep
+                    photoSelections[groupId] = group.photos
+                        .filter(photo => photo.uuid !== photoToKeep.uuid)
+                        .map(photo => photo.uuid);
+                    
+                    updatePhotoCards(groupId);
+                    updateSelectionSummary();
+                }
+            }
+
+            function deleteAllPhotos(groupId) {
+                // Delete all photos in the group (select ALL for deletion)
+                if (confirm('⚠️ Are you sure you want to delete ALL photos in this group? This will mark all photos for deletion.')) {
+                    const group = allGroups.find(g => g.group_id === groupId);
+                    if (group) {
+                        photoSelections[groupId] = group.photos.map(photo => photo.uuid);
+                        updatePhotoCards(groupId);
+                        updateSelectionSummary();
+                    }
+                }
+            }
+
+            function showWhyGrouped(groupId) {
+                const group = allGroups.find(g => g.group_id === groupId);
+                if (!group) return;
+                
+                // Analyze why these photos were grouped
+                const photos = group.photos;
+                const timeSpan = new Date(group.time_window_end) - new Date(group.time_window_start);
+                const timeSpanSeconds = Math.round(timeSpan / 1000);
+                
+                // Analyze timestamps
+                const timestamps = photos.map(p => new Date(p.timestamp)).sort((a, b) => a - b);
+                const firstPhoto = timestamps[0];
+                const lastPhoto = timestamps[timestamps.length - 1];
+                const totalSpan = Math.round((lastPhoto - firstPhoto) / 1000);
+                
+                // Analyze cameras
+                const cameras = [...new Set(photos.map(p => p.camera_model).filter(c => c))];
+                
+                // Analyze file formats
+                const formats = [...new Set(photos.map(p => p.format))];
+                
+                // Analyze resolutions
+                const resolutions = [...new Set(photos.map(p => p.width && p.height ? `${p.width}×${p.height}` : 'Unknown'))];
+                
+                const explanation = `🔍 WHY THESE PHOTOS WERE GROUPED TOGETHER
+
+📊 Current Grouping Algorithm:
+• Time Window: Photos taken within 10 seconds
+• Camera Match: Same camera model
+• No Visual Similarity: Not yet implemented
+
+📅 Time Analysis:
+• First photo: ${firstPhoto.toLocaleString()}
+• Last photo: ${lastPhoto.toLocaleString()}
+• Total time span: ${totalSpan} seconds
+• Within 10-second window: ${timeSpanSeconds <= 10 ? '✅ Yes' : '❌ No - this may be a grouping error'}
+
+📷 Camera Analysis:
+• Camera models: ${cameras.length > 0 ? cameras.join(', ') : 'Unknown'}
+• Same camera: ${cameras.length <= 1 ? '✅ Yes' : '❌ No - this may be a grouping error'}
+
+🖼️ Technical Details:
+• File formats: ${formats.join(', ')}
+• Resolutions: ${resolutions.join(', ')}
+• Photo count: ${photos.length}
+
+⚠️ KNOWN LIMITATIONS:
+• No visual similarity analysis (coming in Stage 5)
+• May group different subjects taken quickly
+• Videos should be filtered out but some may slip through
+• Time-based grouping can be too broad
+
+💡 RECOMMENDATIONS:
+• Use "Keep All" if photos are different subjects
+• Use "Delete All But Best" if photos are truly similar
+• Manual review is always recommended`;
+                
+                alert(explanation);
+            }
+
+            let allGroups = []; // Store groups for calculations
+
+            function updateSelectionSummary() {
+                if (allGroups.length === 0) return;
+                
+                let totalPhotosToDelete = 0;
+                let totalSavingsMB = 0;
+                let groupsWithDeletions = 0;
+                
+                allGroups.forEach(group => {
+                    const selectedPhotos = photoSelections[group.group_id] || [];
+                    const photosToDelete = group.photos.filter(photo => selectedPhotos.includes(photo.uuid));
+                    
+                    if (photosToDelete.length > 0) {
+                        groupsWithDeletions++;
+                        totalPhotosToDelete += photosToDelete.length;
+                        
+                        // Calculate estimated savings for this group
+                        const deletionSizeMB = photosToDelete.reduce((sum, photo) => {
+                            return sum + (photo.file_size / (1024 * 1024));
+                        }, 0);
+                        totalSavingsMB += deletionSizeMB;
+                    }
+                });
+                
+                const summaryDiv = document.getElementById('selectionSummary');
+                const statsDiv = document.getElementById('summaryStats');
+                
+                if (totalPhotosToDelete > 0) {
+                    summaryDiv.style.display = 'block';
+                    statsDiv.innerHTML = `
+                        <div class="deletion-warning" style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 1.5rem; margin-right: 8px;">⚠️</span>
+                                <strong style="color: #856404;">DELETION SUMMARY</strong>
+                            </div>
+                            <div style="color: #856404;">
+                                <strong>${totalPhotosToDelete} photos</strong> from <strong>${groupsWithDeletions} groups</strong> will be marked for deletion, saving approximately <strong>~${totalSavingsMB.toFixed(1)} MB</strong>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                            <div class="stat-card" style="background: #f8d7da; border: 1px solid #dc3545;">
+                                <div class="stat-number" style="color: #dc3545;">❌ ${totalPhotosToDelete}</div>
+                                <div class="stat-label">Photos to Delete</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${groupsWithDeletions}</div>
+                                <div class="stat-label">Groups with Deletions</div>
+                            </div>
+                            <div class="stat-card" style="background: #d4edda; border: 1px solid #28a745;">
+                                <div class="stat-number" style="color: #28a745;">💾 ~${totalSavingsMB.toFixed(1)} MB</div>
+                                <div class="stat-label">Est. Storage Savings</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    summaryDiv.style.display = 'none';
+                }
+            }
+
+            function confirmDeletions() {
+                let totalPhotosToDelete = 0;
+                let deletionList = [];
+                
+                allGroups.forEach(group => {
+                    const selectedPhotos = photoSelections[group.group_id] || [];
+                    // FIXED: In inverted model, selected photos = photos to DELETE
+                    const photosToDelete = group.photos.filter(photo => selectedPhotos.includes(photo.uuid));
+                    
+                    photosToDelete.forEach(photo => {
+                        deletionList.push({
+                            group_id: group.group_id,
+                            uuid: photo.uuid,
+                            filename: photo.filename,
+                            timestamp: photo.timestamp,
+                            file_size: photo.file_size
+                        });
+                    });
+                    
+                    totalPhotosToDelete += photosToDelete.length;
+                });
+                
+                if (totalPhotosToDelete === 0) {
+                    alert('No photos selected for deletion.');
+                    return;
+                }
+                
+                const confirmMsg = `⚠️ CONFIRMATION REQUIRED ⚠️
+
+You are about to mark ${totalPhotosToDelete} photos for deletion.
+
+This action will:
+1. Tag these photos as "marked-for-deletion" in your Photos library
+2. Create a smart album for easy review
+3. Generate a deletion list for your records
+
+The photos will NOT be permanently deleted - you will need to manually delete them from the smart album.
+
+Do you want to proceed?`;
+                
+                if (confirm(confirmMsg)) {
+                    // Execute the real workflow
+                    executeWorkflow(deletionList, totalPhotosToDelete);
+                }
+            }
+
+            function executeWorkflow(deletionList, totalPhotosToDelete) {
+                // Calculate estimated savings
+                const totalSavingsMB = deletionList.reduce((sum, photo) => {
+                    return sum + (photo.file_size / (1024 * 1024));
+                }, 0);
+                
+                // Extract just the UUIDs
+                const photoUuids = deletionList.map(photo => photo.uuid);
+                
+                // Show loading state
+                const confirmBtn = document.getElementById('confirmBtn');
+                const originalText = confirmBtn.textContent;
+                confirmBtn.textContent = '🔄 Processing...';
+                confirmBtn.disabled = true;
+                
+                // Call the workflow API
+                fetch('/api/complete-workflow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        photo_uuids: photoUuids,
+                        estimated_savings_mb: totalSavingsMB
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showWorkflowSuccess(data);
+                    } else {
+                        alert('❌ Error: ' + (data.error || 'Unknown error occurred'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error executing workflow:', error);
+                    alert('❌ Network error: ' + error.message);
+                })
+                .finally(() => {
+                    // Restore button
+                    confirmBtn.textContent = originalText;
+                    confirmBtn.disabled = false;
+                });
+            }
+
+            function showWorkflowSuccess(data) {
+                const summary = data.summary;
+                const guidance = data.workflow_guidance;
+                
+                // Create a detailed success modal/alert
+                const nextSteps = summary.next_steps.map(step => '• ' + step).join('\n');
+                const successMsg = `✅ WORKFLOW COMPLETED SUCCESSFULLY!
+
+📊 Summary:
+• ${summary.photos_processed} photos processed
+• ~${summary.estimated_savings_mb.toFixed(1)} MB estimated savings
+• Session ID: ${summary.session_id}
+• Album name: "${summary.album_name}"
+
+📋 Next Steps:
+${nextSteps}
+
+🔧 Manual Instructions:
+📋 Tagging: ${guidance.tagging_instructions}
+
+📁 Smart Album: ${guidance.album_instructions}
+
+⚠️ ${guidance.safety_reminder}
+
+📄 Deletion list has been generated and is available in the browser console.`;
+
+                alert(successMsg);
+                
+                // Log detailed data to console
+                console.log('=== DELETION WORKFLOW COMPLETED ===');
+                console.log('Summary:', summary);
+                console.log('Export Data:', data.export_data);
+                console.log('Guidance:', guidance);
+                
+                // Optionally download the deletion list
+                downloadDeletionList(data.export_data, summary.session_id);
+            }
+
+            function downloadDeletionList(exportData, sessionId) {
+                // Create CSV content
+                const headers = ['UUID', 'Filename', 'Timestamp', 'Size (MB)', 'Camera', 'Width', 'Height', 'Format', 'Quality Score'];
+                const csvContent = [
+                    headers.join(','),
+                    ...exportData.map(photo => [
+                        photo.uuid,
+                        `"${photo.filename}"`,
+                        photo.timestamp,
+                        photo.file_size_mb,
+                        `"${photo.camera_model || ''}"`,
+                        photo.width || '',
+                        photo.height || '',
+                        photo.format || '',
+                        photo.quality_score || ''
+                    ].join(','))
+                ].join('\n');
+                
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `deletion_list_${sessionId}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                console.log('📄 Deletion list CSV downloaded:', `deletion_list_${sessionId}.csv`);
+            }
+
+            // Preview functionality
+            let currentPreviewGroup = null;
+            let currentPreviewIndex = 0;
+
+            function openPreview(groupId, photoIndex) {
+                const group = allGroups.find(g => g.group_id === groupId);
+                if (!group || !group.photos[photoIndex]) return;
+
+                currentPreviewGroup = group;
+                currentPreviewIndex = photoIndex;
+                
+                const photo = group.photos[photoIndex];
+                const modal = document.getElementById('previewModal');
+                const image = document.getElementById('previewImage');
+                const filename = document.getElementById('previewFilename');
+                const metadata = document.getElementById('previewMetadata');
+                
+                // Set image source to full-resolution image
+                image.src = `/api/full-image/${photo.uuid}`;
+                image.onerror = function() {
+                    // Fallback to thumbnail if full image fails
+                    console.log('Full image failed, falling back to thumbnail');
+                    image.src = `/api/thumbnail/${photo.uuid}`;
+                    image.onerror = function() {
+                        image.style.display = 'none';
+                        image.nextElementSibling.innerHTML = '❌ Image not available for preview';
+                    };
+                };
+                
+                // Set metadata
+                filename.textContent = photo.filename;
+                const timestamp = photo.timestamp ? new Date(photo.timestamp).toLocaleString() : 'Unknown';
+                const resolution = photo.width && photo.height ? `${photo.width}×${photo.height}` : 'Unknown';
+                const fileSize = photo.file_size > 0 ? `${(photo.file_size / (1024*1024)).toFixed(1)} MB` : 'Unknown';
+                
+                metadata.innerHTML = `
+                    📅 ${timestamp}<br>
+                    📐 ${resolution}<br>
+                    💾 ${fileSize}<br>
+                    🎯 Quality: ${photo.quality_score.toFixed(1)}/100<br>
+                    📷 ${photo.camera_model || 'Unknown camera'}
+                `;
+                
+                // Show modal
+                modal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+                
+                // Update navigation buttons
+                updatePreviewNavigation();
+            }
+
+            function closePreview() {
+                const modal = document.getElementById('previewModal');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                currentPreviewGroup = null;
+                currentPreviewIndex = 0;
+            }
+
+            function navigatePhoto(direction) {
+                if (!currentPreviewGroup) return;
+                
+                const newIndex = currentPreviewIndex + direction;
+                if (newIndex >= 0 && newIndex < currentPreviewGroup.photos.length) {
+                    currentPreviewIndex = newIndex;
+                    const photo = currentPreviewGroup.photos[currentPreviewIndex];
+                    
+                    const image = document.getElementById('previewImage');
+                    const filename = document.getElementById('previewFilename');
+                    const metadata = document.getElementById('previewMetadata');
+                    
+                    // Set image source to full-resolution image
+                    image.src = `/api/full-image/${photo.uuid}`;
+                    image.onerror = function() {
+                        // Fallback to thumbnail if full image fails
+                        console.log('Full image failed, falling back to thumbnail');
+                        image.src = `/api/thumbnail/${photo.uuid}`;
+                        image.onerror = function() {
+                            image.style.display = 'none';
+                            image.nextElementSibling.innerHTML = '❌ Image not available for preview';
+                        };
+                    };
+                    filename.textContent = photo.filename;
+                    
+                    const timestamp = photo.timestamp ? new Date(photo.timestamp).toLocaleString() : 'Unknown';
+                    const resolution = photo.width && photo.height ? `${photo.width}×${photo.height}` : 'Unknown';
+                    const fileSize = photo.file_size > 0 ? `${(photo.file_size / (1024*1024)).toFixed(1)} MB` : 'Unknown';
+                    
+                    metadata.innerHTML = `
+                        📅 ${timestamp}<br>
+                        📐 ${resolution}<br>
+                        💾 ${fileSize}<br>
+                        🎯 Quality: ${photo.quality_score.toFixed(1)}/100<br>
+                        📷 ${photo.camera_model || 'Unknown camera'}
+                    `;
+                    
+                    updatePreviewNavigation();
+                }
+            }
+
+            function updatePreviewNavigation() {
+                const prevBtn = document.getElementById('prevPhoto');
+                const nextBtn = document.getElementById('nextPhoto');
+                
+                if (currentPreviewGroup) {
+                    prevBtn.style.display = currentPreviewIndex > 0 ? 'flex' : 'none';
+                    nextBtn.style.display = currentPreviewIndex < currentPreviewGroup.photos.length - 1 ? 'flex' : 'none';
+                }
+            }
+
+            function openInPhotos(photoUuid) {
+                // Show visual feedback
+                const filenameElement = event.target;
+                const originalText = filenameElement.textContent;
+                filenameElement.textContent = '🔄 Opening in Photos...';
+                filenameElement.style.color = '#FF9800';
+                
+                // Call backend endpoint to open specific photo in Photos app
+                fetch(`/api/open-photo/${photoUuid}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            filenameElement.textContent = '✅ Opened in Photos!';
+                            filenameElement.style.color = '#4CAF50';
+                            setTimeout(() => {
+                                filenameElement.textContent = originalText;
+                                filenameElement.style.color = '#2196F3';
+                            }, 2000);
+                        } else {
+                            console.error('Failed to open photo in Photos app:', data.error);
+                            if (data.search_term) {
+                                filenameElement.textContent = `🔍 Search for: ${data.search_term}`;
+                                filenameElement.style.color = '#FF9800';
+                            } else {
+                                filenameElement.textContent = '❌ Failed to open';
+                                filenameElement.style.color = '#f44336';
+                            }
+                            setTimeout(() => {
+                                filenameElement.textContent = originalText;
+                                filenameElement.style.color = '#2196F3';
+                            }, 3000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error opening photo:', error);
+                        filenameElement.textContent = '❌ Error occurred';
+                        filenameElement.style.color = '#f44336';
+                        setTimeout(() => {
+                            filenameElement.textContent = originalText;
+                            filenameElement.style.color = '#2196F3';
+                            // Fallback: just open Photos app
+                            window.open('photos://', '_blank');
+                        }, 2000);
+                    });
+            }
+
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (document.getElementById('previewModal').style.display === 'block') {
+                    switch(e.key) {
+                        case 'Escape':
+                            closePreview();
+                            break;
+                        case 'ArrowLeft':
+                            navigatePhoto(-1);
+                            break;
+                        case 'ArrowRight':
+                            navigatePhoto(1);
+                            break;
+                    }
+                    e.preventDefault();
+                }
+            });
+        </script>
+    
+    
+    </body></html>

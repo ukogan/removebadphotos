@@ -1,0 +1,147 @@
+{
+  "domain": "unsplash.com",
+  "label": "Unsplash",
+  "category": "Modern photo gallery",
+  "research_focus": "Masonry layouts, typography, modern aesthetics",
+  "started_at": "2025-08-22T09:44:38.363047",
+  "steps": [
+    {
+      "seq": 1,
+      "action": "navigate",
+      "url": "https://unsplash.com/",
+      "title": "Beautiful Free Images & Pictures | Unsplash",
+      "timestamp": "2025-08-22T09:44:43.688126"
+    }
+  ],
+  "visual_analysis": {
+    "color_palette": {
+      "extracted_colors": [
+        "rgb(0, 0, 0)",
+        "rgb(255, 255, 255)",
+        "rgb(17, 17, 17)",
+        "rgb(17, 17, 17) rgba(0, 0, 0, 0.12) rgb(17, 17, 17) rgb(17, 17, 17)",
+        "rgb(238, 238, 238)",
+        "rgb(118, 118, 118)",
+        "rgb(209, 209, 209)",
+        "rgb(244, 244, 244)",
+        "rgb(38, 64, 115)",
+        "rgba(246, 246, 246, 0.98)",
+        "rgb(85, 85, 85)",
+        "rgb(192, 192, 166)",
+        "rgb(89, 217, 243)",
+        "rgb(115, 89, 12)",
+        "rgb(38, 38, 12)",
+        "rgb(243, 243, 243)",
+        "rgb(89, 166, 217)",
+        "rgb(12, 38, 12)",
+        "rgb(217, 115, 140)",
+        "rgb(243, 217, 217)"
+      ],
+      "palette_size": 20
+    },
+    "typography": {
+      "headings": [
+        {
+          "tag": "H1",
+          "fontSize": "18px",
+          "fontWeight": "400",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "lineHeight": "28.8px",
+          "color": "rgb(17, 17, 17)"
+        },
+        {
+          "tag": "H4",
+          "fontSize": "15px",
+          "fontWeight": "600",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "lineHeight": "24px",
+          "color": "rgb(17, 17, 17)"
+        },
+        {
+          "tag": "H4",
+          "fontSize": "15px",
+          "fontWeight": "400",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "lineHeight": "24px",
+          "color": "rgb(118, 118, 118)"
+        }
+      ],
+      "body_text": [
+        {
+          "fontSize": "18px",
+          "fontWeight": "400",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "lineHeight": "28.8px",
+          "color": "rgb(17, 17, 17)"
+        }
+      ],
+      "buttons": [
+        {
+          "fontSize": "15px",
+          "fontWeight": "400",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(118, 118, 118)",
+          "borderRadius": "8px",
+          "padding": "8px"
+        },
+        {
+          "fontSize": "15px",
+          "fontWeight": "400",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(17, 17, 17)",
+          "borderRadius": "0px",
+          "padding": "0px"
+        },
+        {
+          "fontSize": "15px",
+          "fontWeight": "400",
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgb(17, 17, 17)",
+          "borderRadius": "8px",
+          "padding": "8px"
+        }
+      ]
+    },
+    "layout": {
+      "photo_containers": [
+        {
+          "width": 1376,
+          "height": 4857.421875,
+          "display": "block",
+          "gridTemplateColumns": "none",
+          "gap": "normal",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "width": 413.328125,
+          "height": 330.65625,
+          "display": "block",
+          "gridTemplateColumns": "none",
+          "gap": "normal",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "width": 413.328125,
+          "height": 330.65625,
+          "display": "inline",
+          "gridTemplateColumns": "none",
+          "gap": "normal",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ],
+      "cards": []
+    },
+    "has_theme_toggle": true
+  },
+  "screenshots": [
+    "visual_research_output/screenshots/Unsplash_main_interface_094443_fullpage.png"
+  ],
+  "status": "completed",
+  "completed_at": "2025-08-22T09:44:45.030904"
+}

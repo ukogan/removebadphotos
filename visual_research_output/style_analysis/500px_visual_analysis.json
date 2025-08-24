@@ -1,0 +1,12 @@
+{
+  "domain": "500px.com",
+  "label": "500px",
+  "category": "Photo community platform",
+  "research_focus": "Photo presentation, dark themes, visual appeal",
+  "started_at": "2025-08-22T09:44:47.128217",
+  "steps": [],
+  "visual_analysis": {},
+  "screenshots": [],
+  "status": "error",
+  "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://500px.com/\", waiting until \"networkidle\"\n"
+}

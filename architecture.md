@@ -1,7 +1,7 @@
 # Photo Dedup Tool Architecture
 
-**Architecture Change Counter: 2**
-**Implementation Status: Stage 3 - Partial (Thumbnail Backend Complete, Frontend Display Issue)**
+**Architecture Change Counter: 4**
+**Implementation Status: Stage 4 - COMPLETE, Photos Library Integration Active**
 
 ## Overview
 
@@ -143,26 +143,33 @@ A macOS photo deduplication tool that identifies similar photos in the Photos li
 8. ✅ **Photo Metadata Extraction** - Comprehensive data structure with timestamps, camera info
 9. ✅ **Group Analysis** - Found real duplicate groups in user's library (73 estimated total)
 
-### 🔄 PARTIALLY COMPLETED - Stage 3: Visual Interface
-10. ✅ **Backend Thumbnail Generation** - PIL-based thumbnail creation working
-11. ✅ **Thumbnail Serving Endpoint** - `/api/thumbnail/<uuid>` returns JPEG images (19KB tested)
-12. ✅ **Photo File Access Solution** - Direct path access + export fallback implemented
+### ✅ COMPLETED - Stage 3: Visual Interface
+10. ✅ **Backend Thumbnail Generation** - PIL-based thumbnail creation with iCloud download support
+11. ✅ **Thumbnail Serving Endpoint** - `/api/thumbnail/<uuid>` and `/api/full-image/<uuid>` working
+12. ✅ **Photo File Access Solution** - Direct path access + export fallback + iCloud download
 13. ✅ **Interactive Selection Interface** - Click-based photo selection with visual feedback
 14. ✅ **Storage Calculation** - Real-time deletion impact and savings calculation
 15. ✅ **Confirmation Workflow** - Multi-step safety dialogs with detailed breakdown
-16. ❌ **Frontend Image Display** - Images not appearing in web interface (NEXT STEP)
+16. ✅ **Frontend Image Display** - Photos displaying correctly with thumbnail fallback
+17. ✅ **Full-Screen Preview** - Modal preview with arrow key navigation using full-resolution images
+18. ✅ **Group Action Buttons** - "Keep All" and "Delete All But Best" functionality
+19. ✅ **Image Quality Analysis** - Multi-factor scoring using OpenCV (sharpness, brightness, noise, resolution)
+20. ✅ **HEIC Support** - iPhone photos supported via pillow-heif
+21. ✅ **Click-to-Open in Photos** - AppleScript integration to open specific photos
 
-### 📋 PENDING - Stage 4: Photos Library Integration
-17. **Photo Tagging** - Mark photos for deletion in Photos app
-18. **Smart Album Creation** - Organize marked photos with timestamped names
-19. **Deletion Lists Export** - CSV/JSON export for user records
-20. **macOS Permissions Handling** - Full Disk Access guidance and requirements
+### ✅ COMPLETED - Stage 4: Photos Library Integration
+22. ✅ **Photo Tagging** - PhotoTagger component with photoscript/AppleScript integration
+23. ✅ **Smart Album Creation** - Automated smart album creation with timestamped names
+24. ✅ **Deletion Lists Export** - CSV/JSON export to Desktop with full metadata
+25. ✅ **Photos App Integration** - Direct keyword tagging via photoscript API
+26. ✅ **Workflow Execution** - /api/complete-workflow endpoint executes real tagging
+27. ✅ **Error Handling** - Graceful fallback to AppleScript if photoscript fails
 
-## Next Critical Issue: Frontend Image Display
-**Problem:** Thumbnail endpoint works (HTTP 200, 19KB JPEG), but images don't display in web interface
-**Root Cause:** Likely JavaScript/HTML img tag implementation issue
-**Impact:** Users can't visually compare photos, defeating core purpose
-**Priority:** HIGH - Must resolve before Stage 4
+## Stage 4 Complete: Full Photos Library Integration
+**Current Status:** Complete end-to-end workflow from analysis to Photos app integration
+**Latest Addition:** PhotoTagger component with dual-method implementation (photoscript + AppleScript fallback)
+**Current Capability:** Users can analyze, select, and automatically tag photos in Photos app with smart album creation
+**Integration Level:** Direct Photos app keyword tagging, smart album creation, and comprehensive export
 
 ## Key Design Decisions
 
@@ -186,6 +193,42 @@ A macOS photo deduplication tool that identifies similar photos in the Photos li
 - Caching of computed hashes and quality scores
 - Configurable batch sizes for large libraries
 - Background processing with progress indicators
+
+## Debuggability Architecture
+
+### HALT Protocol Integration
+**H - Hypothesis First:** All debugging starts with diagnostic tests (`make diagnostics`)
+**A - Artifact Creation:** Isolated test creation in `tests/debugging/`
+**L - Layer Isolation:** 4-tier test pyramid (diagnostics → unit → integration → e2e)
+**T - Track Progress:** 30-minute hard limit with 10-minute check-ins
+
+### Service Health Monitoring
+**Circuit Breaker Pattern:** All external service calls wrapped in failure detection
+**Diagnostic Endpoints:** Each service implements health check interface
+**Memory Monitoring:** Continuous tracking with 200MB alert threshold
+**Error Cataloging:** All errors documented in ERROR_CATALOG.md with resolution time
+
+### Test Architecture
+```
+tests/
+├── diagnostics/     # < 1 second - System health verification
+├── unit/           # < 5 seconds - Pure function testing  
+├── integration/    # < 30 seconds - Service interaction testing
+├── e2e/           # < 2 minutes - Complete workflow testing
+└── debugging/     # One-off debug test isolation
+```
+
+### Development Workflow Integration
+- **Pre-debugging:** `make debug-start` runs diagnostics + starts timer
+- **Debug isolation:** All debugging on `debug/[issue]` branches
+- **Progress tracking:** DEBUGGING.md updated every 10 minutes
+- **Escalation triggers:** 30-minute limit, memory alerts, architecture counter at 5
+
+### Error Recovery Patterns
+**Service Degradation:** PhotoScanner → fallback to cached data
+**Memory Issues:** Lazy loading + batch processing + garbage collection
+**Library Access:** osxphotos failure → graceful UI degradation
+**Thumbnail Generation:** PIL failure → placeholder image serving
 
 ## Risks & Mitigations
 

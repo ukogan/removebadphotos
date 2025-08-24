@@ -1,0 +1,12 @@
+{
+  "domain": "www.adobe.com/products/lightroom.html",
+  "label": "Adobe Lightroom",
+  "category": "Professional photo management showcase",
+  "research_focus": "Professional UI aesthetics, typography, color schemes",
+  "started_at": "2025-08-22T09:43:30.098407",
+  "steps": [],
+  "visual_analysis": {},
+  "screenshots": [],
+  "status": "error",
+  "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.adobe.com/products/lightroom.html\", waiting until \"networkidle\"\n"
+}
