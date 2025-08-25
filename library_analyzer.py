@@ -62,6 +62,7 @@ class LibraryAnalyzer:
     
     def __init__(self):
         self.photosdb = None
+        self.scanner = None
         
     def get_photosdb(self):
         """Get or create PhotosDB connection."""
@@ -69,12 +70,21 @@ class LibraryAnalyzer:
             self.photosdb = osxphotos.PhotosDB()
         return self.photosdb
     
+    def get_photo_scanner(self):
+        """Get or create PhotoScanner instance for filtering."""
+        if self.scanner is None:
+            from photo_scanner import PhotoScanner
+            self.scanner = PhotoScanner()
+        return self.scanner
+    
     def quick_scan_library(self, progress_callback=None) -> Tuple[LibraryStats, List[PhotoMetadata]]:
         """Fast metadata-only scan of entire library."""
         print("🚀 Starting fast library scan (metadata only)...")
         
-        db = self.get_photosdb()
-        photos = db.photos(intrash=False, movies=False)
+        scanner = self.get_photo_scanner()
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        if excluded_count > 0:
+            print(f"🔄 Excluded {excluded_count} photos already marked for deletion from library analysis")
         
         photo_metadata_list = []
         total_size = 0
@@ -105,6 +115,9 @@ class LibraryAnalyzer:
                 
                 # Calculate organization score
                 org_score = self.calculate_organization_score(albums, folder_names, keywords, photo.path)
+                
+                # Get filename safely
+                filename = photo.original_filename or photo.filename
                 
                 metadata = PhotoMetadata(
                     uuid=photo.uuid,

@@ -4,13 +4,16 @@ Photo Deduplication Tool - Flask Backend
 Stage 2: Core photo analysis with grouping and similarity detection
 """
 
-from flask import Flask, render_template_string, jsonify, request, send_file
+from flask import Flask, render_template_string, jsonify, request, send_file, session
 from flask_cors import CORS
 from datetime import datetime
 import traceback
+import os
+import secrets
 from photo_scanner import PhotoScanner
 from library_analyzer import LibraryAnalyzer
 from photo_tagger import PhotoTagger
+from lazy_photo_loader import LazyPhotoLoader
 import json
 import os
 import tempfile
@@ -28,15 +31,25 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+# Configure session management for filter-to-dashboard data flow
+app.secret_key = secrets.token_hex(32)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True for HTTPS in production
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session timeout
+
 # Global instances
 scanner = PhotoScanner()
 analyzer = LibraryAnalyzer()
 tagger = PhotoTagger()
+lazy_loader = LazyPhotoLoader(analyzer, scanner)
 cached_groups = None
 cached_timestamp = None
 cached_library_stats = None
 cached_clusters = None
 cached_library_timestamp = None
+
+# Server-side session storage to avoid large cookies
+server_side_sessions = {}
 
 # Progress tracking for long-running operations
 progress_status = {
@@ -149,6 +162,16 @@ def index():
     """Main dashboard page with library overview and priority targeting."""
     with open('/Users/urikogan/code/dedup/dashboard.html', 'r') as f:
         return f.read()
+
+@app.route('/filters')
+def filters():
+    """Stage 5B: Smart filter interface for targeted duplicate analysis."""
+    try:
+        with open('/Users/urikogan/code/dedup/filter_interface.html', 'r') as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error serving filter interface: {e}")
+        return f"Error loading filter interface: {e}", 500
 
 @app.route('/legacy')
 def legacy():
@@ -1426,9 +1449,11 @@ def api_library_stats():
         scanner = PhotoScanner()
         db = scanner.get_photosdb()
         
-        # Get basic stats without expensive operations
-        photos = db.photos(intrash=False, movies=False)
+        # Get basic stats without expensive operations - excluding marked for deletion
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
         total_photos = len(photos)
+        if excluded_count > 0:
+            print(f"📊 Library stats: excluded {excluded_count} photos already marked for deletion")
         
         if total_photos == 0:
             return jsonify({
@@ -1497,8 +1522,9 @@ def api_filter_preview():
         min_size_bytes = min_size_mb * 1024 * 1024
         
         scanner = PhotoScanner()
-        db = scanner.get_photosdb()
-        photos = db.photos(intrash=False, movies=False)
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        if excluded_count > 0:
+            print(f"🗑️ Filter preview: excluded {excluded_count} photos already marked for deletion")
         
         total_photos = len(photos)
         if total_photos == 0:
@@ -1528,6 +1554,276 @@ def api_filter_preview():
             'error': str(e)
         })
 
+def run_filtered_analysis(filter_session, min_size_mb, analysis_type, max_photos):
+    """Run analysis on only the selected photos from filter interface"""
+    try:
+        print(f"🎯 Running filtered analysis on {filter_session['total_photos_in_filter']} selected photos")
+        
+        scanner = PhotoScanner()
+        db = scanner.get_photosdb()
+        
+        # Get the selected photo UUIDs
+        selected_photo_uuids = filter_session.get('selected_photo_uuids', [])
+        if not selected_photo_uuids:
+            return jsonify({
+                'success': False,
+                'error': 'No selected photos found in filter session'
+            })
+        
+        print(f"📋 Working with {len(selected_photo_uuids)} selected photo UUIDs")
+        
+        # Get all unprocessed photos from library and filter to only selected ones (excludes marked for deletion)
+        all_photos, excluded_count = scanner.get_unprocessed_photos(include_videos=True)
+        selected_photos = [p for p in all_photos if p.uuid in selected_photo_uuids]
+        print(f"🔄 Excluded {excluded_count} photos already marked for deletion from filter selection")
+        
+        print(f"✅ Found {len(selected_photos)} photos matching selected UUIDs")
+        
+        if not selected_photos:
+            print(f"❌ CRITICAL: Found {len(selected_photos)} photos out of {len(selected_photo_uuids)} requested UUIDs")
+            return jsonify({
+                'success': False,
+                'error': f'No matching photos found in library for selected UUIDs. Expected {len(selected_photo_uuids)} photos but found 0. This may indicate a database sync issue or that the photos have been moved/deleted.',
+                'debug_info': {
+                    'requested_uuids': len(selected_photo_uuids),
+                    'found_photos': 0,
+                    'sample_uuids': selected_photo_uuids[:5]  # First 5 for debugging
+                }
+            })
+        
+        # Report UUID resolution success rate
+        uuid_success_rate = len(selected_photos) / len(selected_photo_uuids) * 100
+        print(f"📊 UUID Resolution: {len(selected_photos)}/{len(selected_photo_uuids)} photos found ({uuid_success_rate:.1f}%)")
+        
+        if uuid_success_rate < 80:  # Less than 80% found
+            print(f"⚠️ WARNING: Low UUID resolution rate ({uuid_success_rate:.1f}%) may indicate data issues")
+        
+        # Apply size filtering on the selected photos
+        min_size_bytes = min_size_mb * 1024 * 1024
+        size_filtered_photos = [p for p in selected_photos 
+                               if p.original_filesize and p.original_filesize >= min_size_bytes]
+        
+        print(f"📈 Photos ≥{min_size_mb}MB in selection: {len(size_filtered_photos)}")
+        
+        # If no photos meet size criteria, use all selected photos
+        if not size_filtered_photos:
+            print("⚠️ No photos meet size criteria, using all selected photos")
+            photos_to_analyze = selected_photos
+        else:
+            photos_to_analyze = size_filtered_photos
+        
+        # Sort by file size (largest first) for priority analysis
+        photos_to_analyze.sort(key=lambda p: p.original_filesize or 0, reverse=True)
+        
+        # Limit to max_photos for performance
+        if len(photos_to_analyze) > max_photos:
+            print(f"🔄 Limiting analysis to top {max_photos} largest photos")
+            photos_to_analyze = photos_to_analyze[:max_photos]
+        
+        print(f"🔍 Converting {len(photos_to_analyze)} photos to PhotoData format...")
+        
+        # Convert PhotoInfo objects to PhotoData objects
+        photo_data_list = []
+        for photo in photos_to_analyze:
+            try:
+                photo_data = scanner.extract_photo_metadata(photo)
+                photo_data_list.append(photo_data)
+            except Exception as e:
+                print(f"⚠️ Error processing photo {photo.uuid}: {e}")
+                continue
+        
+        print(f"✅ Successfully processed {len(photo_data_list)} photos")
+        
+        if not photo_data_list:
+            return jsonify({
+                'success': False,
+                'error': 'No photos could be processed for analysis'
+            })
+        
+        # Group the selected photos
+        if analysis_type == 'metadata':
+            groups = scanner.group_photos_by_time_and_camera(photo_data_list)
+        else:
+            groups = scanner.group_photos_by_time_and_camera(photo_data_list)
+        
+        print(f"📊 Created {len(groups)} groups from selected photos")
+        
+        # Apply the same priority scoring from the main analysis function
+        def _calculate_priority_score(group):
+            """Calculate real priority score (0-100) based on duplicate confidence indicators"""
+            if not group.photos or len(group.photos) < 2:
+                return 0
+            
+            # Factor 1: File size factor (40%) - Larger files = higher priority for savings
+            avg_file_size = sum(p.file_size for p in group.photos) / len(group.photos)
+            file_size_mb = avg_file_size / (1024 * 1024)
+            # Scale: 0MB=0, 10MB=50, 20MB+=100
+            file_size_factor = min(100, (file_size_mb / 10.0) * 50)
+            
+            # Factor 2: Time proximity factor (30%) - Closer timestamps = higher confidence
+            timestamps = [p.timestamp for p in group.photos if p.timestamp]
+            if len(timestamps) >= 2:
+                time_span = max(timestamps) - min(timestamps)
+                time_span_seconds = time_span.total_seconds()
+                # Scale: 0s=100, 10s=80, 60s=20, 300s+=0
+                time_proximity_factor = max(0, 100 - (time_span_seconds / 3.0))
+            else:
+                time_proximity_factor = 0
+                
+            # Factor 3: Group confidence factor (20%) - More photos + same camera = higher confidence
+            group_size_factor = min(100, (len(group.photos) - 1) * 25)  # 2 photos=25, 3=50, 4+=75-100
+            
+            # Same camera bonus
+            cameras = set(p.camera_model for p in group.photos if p.camera_model)
+            camera_factor = 100 if len(cameras) == 1 and list(cameras)[0] else 50
+            group_confidence_factor = (group_size_factor + camera_factor) / 2
+            
+            # Factor 4: Similarity factor (10%) - Quality scores and potential visual similarity  
+            quality_scores = [p.quality_score for p in group.photos if p.quality_score > 0]
+            if quality_scores:
+                # High variation in quality scores suggests one clear best photo
+                quality_variation = max(quality_scores) - min(quality_scores) if len(quality_scores) > 1 else 0
+                similarity_factor = min(100, quality_variation * 2)  # Higher variation = clearer duplicate
+            else:
+                similarity_factor = 50  # Neutral if no quality data
+            
+            # Combine factors with weights
+            priority_score = (
+                file_size_factor * 0.4 +
+                time_proximity_factor * 0.3 + 
+                group_confidence_factor * 0.2 +
+                similarity_factor * 0.1
+            )
+            
+            priority_score = min(100, max(0, priority_score))
+            return priority_score
+        
+        def _score_to_priority_level(score):
+            """Convert 0-100 priority score to P1-P10 level"""
+            if score >= 90: return "P1"    # Perfect matches - large files, perfect timing  
+            elif score >= 80: return "P2"  # Very high confidence - burst photos, large savings
+            elif score >= 70: return "P3"  # High confidence - clear duplicates, good savings
+            elif score >= 60: return "P4"  # High-medium confidence
+            elif score >= 50: return "P5"  # Medium+ confidence  
+            elif score >= 40: return "P6"  # Medium confidence
+            elif score >= 30: return "P7"  # Medium-low confidence
+            elif score >= 20: return "P8"  # Low+ confidence
+            elif score >= 10: return "P9"  # Low confidence
+            else: return "P10"              # Lowest confidence
+        
+        # Convert to clusters for dashboard display
+        clusters = []
+        for i, group in enumerate(groups):
+            priority_score = _calculate_priority_score(group)
+            priority_level = _score_to_priority_level(priority_score)
+            
+            cluster = type('Cluster', (), {
+                'cluster_id': f"filtered_cluster_{i}",
+                'group_id': f"filtered_cluster_{i}",
+                'photos': group.photos,
+                'duplicate_probability_score': priority_score,
+                'potential_savings_bytes': group.potential_savings_bytes,
+                'priority_level': priority_level,
+                'recommended_photo': group.photos[0] if group.photos else None,
+                'photo_uuids': [p.uuid for p in group.photos]
+            })()
+            clusters.append(cluster)
+        
+        # Create dashboard data structure
+        priority_summary = {}
+        for p_level in [f"P{i}" for i in range(1, 11)]:
+            level_clusters = [c for c in clusters if c.priority_level == p_level]
+            if level_clusters:
+                priority_summary[p_level] = {
+                    'count': len(level_clusters),
+                    'total_savings_mb': sum(c.potential_savings_bytes for c in level_clusters) / (1024*1024),
+                    'photo_count': sum(len(c.photos) for c in level_clusters)
+                }
+            else:
+                priority_summary[p_level] = {
+                    'count': 0,
+                    'total_savings_mb': 0,
+                    'photo_count': 0
+                }
+        
+        # Get library stats (but keep them as overview stats for context) - excluding marked for deletion
+        all_photos, _ = scanner.get_unprocessed_photos(include_videos=True)
+        total_savings = sum(g.potential_savings_bytes for g in filtered_groups)
+        total_library_size = sum(p.original_filesize for p in all_photos if p.original_filesize) / (1024**3)
+        
+        stats = {
+            'total_photos': len(all_photos),  # Keep full library count for context
+            'total_size_gb': total_library_size,  # Keep full library size for context
+            'estimated_duplicates': len(filtered_groups),  # But show only filtered duplicates
+            'potential_savings_gb': total_savings / (1024**3),  # Only savings from filtered selection
+            'potential_groups': len(filtered_groups),  # Only filtered groups
+            'date_range_start': min(p.date for p in all_photos if p.date).isoformat() if any(p.date for p in all_photos) else None,
+            'date_range_end': max(p.date for p in all_photos if p.date).isoformat() if any(p.date for p in all_photos) else None,
+            'camera_models': list(set([getattr(p.exif_info, 'camera_model', None) for p in all_photos[:1000] 
+                                    if hasattr(p, 'exif_info') and p.exif_info and getattr(p.exif_info, 'camera_model', None)]))[:10],
+            'photos_analyzed': len(all_group_photos),  # Photos in the filtered selection
+            'filtered_mode': True  # Flag to indicate this is filtered analysis
+        }
+        
+        # Cache results globally
+        global cached_library_stats, cached_clusters, cached_library_timestamp, cached_groups, cached_timestamp
+        cached_library_stats = stats
+        cached_clusters = clusters
+        cached_library_timestamp = datetime.now()
+        cached_groups = filtered_groups
+        cached_timestamp = datetime.now()
+        
+        dashboard_data = {
+            'library_stats': stats,
+            'priority_summary': priority_summary,
+            'cluster_count': len(clusters)
+        }
+        
+        print(f"✅ Filtered analysis complete: {len(filtered_groups)} groups, {len(clusters)} clusters")
+        print(f"🎯 Analysis focused on {len(all_group_photos)} photos from selected clusters")
+        
+        return jsonify({
+            'success': True,
+            'dashboard': dashboard_data,
+            'analysis_type': f"{analysis_type}_filtered",
+            'photos_analyzed': len(all_group_photos),
+            'mode': 'filtered'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in filtered analysis: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+def apply_filter_criteria(photos, criteria):
+    """Apply filter criteria to photo list"""
+    filtered = photos
+    
+    # Year range filter - support both single year and year range
+    if criteria.get('start_year') and criteria.get('end_year'):
+        start_year = int(criteria['start_year'])
+        end_year = int(criteria['end_year'])
+        filtered = [p for p in filtered if p.date and start_year <= p.date.year <= end_year]
+    elif criteria.get('year'):
+        # Single year support (from filter interface)
+        year = int(criteria['year'])
+        filtered = [p for p in filtered if p.date and p.date.year == year]
+    
+    # File type filter  
+    if criteria.get('file_types'):
+        file_types = [ft.lower() for ft in criteria['file_types']]
+        filtered = [p for p in filtered if p.path_edited and any(p.path_edited.lower().endswith(f'.{ft}') for ft in file_types)]
+    
+    # Size filter
+    if criteria.get('min_size_mb'):
+        min_size_bytes = criteria['min_size_mb'] * 1024 * 1024
+        filtered = [p for p in filtered if p.original_filesize and p.original_filesize >= min_size_bytes]
+    
+    return filtered
+
 @app.route('/api/smart-analysis', methods=['POST'])
 def api_smart_analysis():
     """Run focused analysis with user-specified parameters"""
@@ -1539,14 +1835,19 @@ def api_smart_analysis():
         
         min_size_bytes = min_size_mb * 1024 * 1024
         
-        print(f"🎯 Starting smart analysis: {analysis_type}, min_size={min_size_mb}MB, max={max_photos}")
+        # Check for filter session data
+        filter_session = session.get('filter_session')
+        if filter_session:
+            print(f"🎯 Filtered analysis mode: analyzing {filter_session['total_clusters_in_filter']} selected clusters")
+            return run_filtered_analysis(filter_session, min_size_mb, analysis_type, max_photos)
+        
+        print(f"🎯 Starting overview analysis: {analysis_type}, min_size={min_size_mb}MB, max={max_photos}")
         
         scanner = PhotoScanner()
-        db = scanner.get_photosdb()
         
-        # Get ALL photos first
-        all_photos = db.photos(intrash=False)
-        print(f"📚 Total library: {len(all_photos)} photos")
+        # Get ALL unprocessed photos first (excludes marked for deletion)
+        all_photos, excluded_count = scanner.get_unprocessed_photos(include_videos=True)
+        print(f"📚 Total library: {len(all_photos)} photos (excluded {excluded_count} already marked for deletion)")
         
         # Filter by size across ENTIRE library
         size_filtered = [p for p in all_photos 
@@ -1985,19 +2286,159 @@ def api_analyze_cluster(cluster_id):
 
 @app.route('/api/groups')
 def api_groups():
-    """API endpoint returning photo groups for review."""
-    global cached_groups, cached_timestamp, cached_clusters
+    """API endpoint returning photo groups for review.
+    
+    CRITICAL: This endpoint must use ONLY the filtered session data.
+    The workflow is: filter → analyze → legacy shows ONLY filtered results.
+    """
+    global cached_groups, cached_timestamp, scanner
     
     try:
-        # Check for priority-based analysis request
+        limit = request.args.get('limit', 10, type=int)
         priority = request.args.get('priority')
-        limit = request.args.get('limit', 10, type=int)  # Default to 10 for better UX
         
-        if priority and cached_clusters is not None:
-            print(f"🎯 Priority-based analysis requested: {priority} (limit: {limit})")
+        print(f"🎯 api_groups called with limit={limit}, priority={priority}")
+        print(f"🎯 Session keys: {list(session.keys())}")
+        
+        # FIRST: Check if we have a filtered session (the main workflow)
+        filter_session = session.get('filter_session')
+        print(f"🎯 Filter session: {filter_session is not None}")
+        
+        if filter_session:
+            session_id = filter_session.get('session_id')
+            server_data = server_side_sessions.get(session_id, {})
             
-            # Get clusters for the specified priority
-            priority_clusters = [c for c in cached_clusters if c.priority_level == priority]
+            if server_data and 'cluster_summaries' in server_data:
+                cluster_summaries = server_data['cluster_summaries']
+                selected_uuids = server_data.get('selected_photo_uuids', [])
+                
+                print(f"🎯 FILTERED SESSION: Using {len(cluster_summaries)} clusters with {len(selected_uuids)} photos from filtered analysis")
+                
+                # Convert cluster summaries to full groups format with actual photo data
+                limited_clusters = cluster_summaries[:limit]
+                groups_data = []
+                
+                # Get photo database to look up actual photo objects
+                try:
+                    # Use filtered photo set (excluding marked for deletion) for consistent lookup
+                    filtered_photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+                    photo_lookup = {p.uuid: p for p in filtered_photos}
+                    print(f"🔍 Photo lookup ready: {len(photo_lookup)} photos indexed (excluded {excluded_count} marked for deletion)")
+                    
+                    for cluster in limited_clusters:
+                        # Get actual photo objects for this cluster
+                        cluster_photo_uuids = cluster.get('photo_uuids', [])
+                        cluster_photos = []
+                        
+                        for photo_uuid in cluster_photo_uuids:
+                            if photo_uuid in photo_lookup:
+                                photo = photo_lookup[photo_uuid]
+                                cluster_photos.append(photo)
+                        
+                        print(f"📊 Cluster {cluster.get('cluster_id', 'unknown')}: {len(cluster_photos)}/{len(cluster_photo_uuids)} photos found")
+                        
+                        if cluster_photos:
+                            # Convert to PhotoData objects for compatibility
+                            photo_data_list = []
+                            for photo in cluster_photos:
+                                photo_data = scanner.extract_photo_metadata(photo)
+                                photo_data_list.append(photo_data)
+                            
+                            # Calculate required group metrics
+                            total_size_bytes = sum(p.file_size for p in photo_data_list)
+                            
+                            # Find the recommended photo (highest quality score)
+                            recommended_photo = max(photo_data_list, key=lambda p: p.quality_score or 0.0)
+                            recommended_photo_uuid = recommended_photo.uuid
+                            
+                            # Calculate potential savings (total size minus largest file)
+                            largest_file_size = max(p.file_size for p in photo_data_list) 
+                            potential_savings_bytes = total_size_bytes - largest_file_size
+                            
+                            # Create a proper group object
+                            from photo_scanner import PhotoGroup
+                            group = PhotoGroup(
+                                group_id=cluster.get('cluster_id', f'filtered_{len(groups_data)}'),
+                                photos=photo_data_list,
+                                recommended_photo_uuid=recommended_photo_uuid,
+                                time_window_start=photo_data_list[0].timestamp,
+                                time_window_end=photo_data_list[-1].timestamp,
+                                camera_model=cluster.get('camera_model', 'Unknown'),
+                                total_size_bytes=total_size_bytes,
+                                potential_savings_bytes=potential_savings_bytes
+                            )
+                            
+                            # Convert to the format expected by frontend  
+                            group_data = {
+                                'group_id': group.group_id,
+                                'photos': [
+                                    {
+                                        'uuid': photo.uuid,
+                                        'filename': photo.original_filename or photo.filename,
+                                        'original_filename': photo.original_filename,
+                                        'timestamp': photo.timestamp.isoformat() if photo.timestamp else None,
+                                        'camera_model': photo.camera_model,
+                                        'file_size': photo.file_size,
+                                        'width': photo.width,
+                                        'height': photo.height,
+                                        'format': photo.format,
+                                        'quality_score': photo.quality_score,
+                                        'organization_score': getattr(photo, 'organization_score', 0.0),
+                                        'albums': getattr(photo, 'albums', []) or [],
+                                        'folder_names': getattr(photo, 'folder_names', []) or [],
+                                        'keywords': getattr(photo, 'keywords', []) or [],
+                                        'recommended': photo.uuid == group.recommended_photo_uuid
+                                    }
+                                    for photo in group.photos
+                                ],
+                                'time_window_start': group.time_window_start.isoformat(),
+                                'time_window_end': group.time_window_end.isoformat(),
+                                'camera_model': group.camera_model,
+                                'total_size_bytes': group.total_size_bytes,
+                                'total_size_mb': round(group.total_size_bytes / (1024 * 1024), 2),
+                                'potential_savings_bytes': group.potential_savings_bytes,
+                                'potential_savings_mb': round(group.potential_savings_bytes / (1024 * 1024), 2),
+                                'photo_count': len(group.photos)
+                            }
+                            groups_data.append(group_data)
+                        else:
+                            print(f"⚠️ No photos found for cluster {cluster.get('cluster_id', 'unknown')}")
+                    
+                except Exception as e:
+                    print(f"❌ Error converting filtered clusters to groups: {e}")
+                    # Fall back to basic cluster summary format
+                    for cluster in limited_clusters:
+                        group_data = {
+                            'photos': cluster.get('photos', []),
+                            'cluster_id': cluster.get('cluster_id', 'unknown'),
+                            'time_span': cluster.get('time_span', 'Unknown time'),
+                            'location_summary': cluster.get('location_summary', 'Unknown location'),
+                            'camera_model': cluster.get('camera_model', 'Unknown camera'),
+                            'duplicate_probability_score': cluster.get('duplicate_probability_score', 0),
+                            'total_size_mb': cluster.get('total_size_mb', 0),
+                            'potential_savings_mb': cluster.get('potential_savings_mb', 0),
+                            'priority_level': cluster.get('priority_level', 'P5')
+                        }
+                        groups_data.append(group_data)
+                
+                return jsonify({
+                    'success': True,
+                    'groups': groups_data,
+                    'total_groups': len(groups_data),
+                    'mode': 'filtered',
+                    'filter_criteria': filter_session.get('filter_criteria', {}),
+                    'source_clusters': filter_session.get('total_clusters_in_filter', 0),
+                    'source_photos': len(selected_uuids),
+                    'message': f'Showing {len(groups_data)} filtered clusters'
+                })
+        
+        # FALLBACK: Old priority-based logic (for backward compatibility)
+        priority = request.args.get('priority')
+        if priority and hasattr(scanner, 'cached_clusters') and scanner.cached_clusters:
+            print(f"🎯 FALLBACK: Priority-based analysis requested: {priority} (limit: {limit})")
+            
+            # Get clusters for the specified priority  
+            priority_clusters = [c for c in scanner.cached_clusters if hasattr(c, 'priority_level') and c.priority_level == priority]
             
             if not priority_clusters:
                 return jsonify({
@@ -2008,7 +2449,7 @@ def api_groups():
                 })
             
             # Sort by duplicate probability score and take top clusters
-            priority_clusters.sort(key=lambda c: c.duplicate_probability_score, reverse=True)
+            priority_clusters.sort(key=lambda c: getattr(c, 'duplicate_probability_score', 0), reverse=True)
             selected_clusters = priority_clusters[:limit]
             
             print(f"📊 Analyzing top {len(selected_clusters)} {priority} priority clusters...")
@@ -2019,13 +2460,26 @@ def api_groups():
                 print(f"🔍 Analyzing cluster {cluster.cluster_id} (score: {cluster.duplicate_probability_score})")
                 
                 # Get the full photo objects for this cluster
-                db = scanner.get_photosdb()
-                photos = []
-                for uuid in cluster.photo_uuids:
-                    for photo in db.photos(intrash=False):
-                        if photo.uuid == uuid:
-                            photos.append(photo)
-                            break
+                try:
+                    db = scanner.get_photosdb()
+                    photos = []
+                    for uuid in cluster.photo_uuids:
+                        # Use filtered photo set for consistency
+                        filtered_photos, _ = scanner.get_unprocessed_photos(include_videos=False)
+                        for photo in filtered_photos:
+                            if photo.uuid == uuid:
+                                photos.append(photo)
+                                break
+                except Exception as e:
+                    print(f"❌ OSXPhotos error accessing database: {e}")
+                    # Return empty result when OSXPhotos fails
+                    return jsonify({
+                        'success': False,
+                        'groups': [],
+                        'total_groups': 0,
+                        'error': f'Photo database access error: {str(e)[:200]}',
+                        'message': 'Unable to access Photos library. Please check compatibility.'
+                    })
                 
                 if photos:
                     # Convert to PhotoData objects
@@ -2072,16 +2526,27 @@ def api_groups():
                 scan_limit = 5000  # Scan more photos to find duplicates
                 
                 # Step 1: Scan photos
-                update_progress("Scanning Photos library", 1, 4, f"Analyzing up to {scan_limit:,} photos from your library...")
-                photos = scanner.scan_photos(limit=scan_limit)
-                
-                if not photos:
+                try:
+                    update_progress("Scanning Photos library", 1, 4, f"Analyzing up to {scan_limit:,} photos from your library...")
+                    photos = scanner.scan_photos(limit=scan_limit)
+                    
+                    if not photos:
+                        complete_progress()
+                        return jsonify({
+                            'success': True,
+                            'groups': [],
+                            'total_groups': 0,
+                            'message': 'No photos found'
+                        })
+                except Exception as e:
+                    print(f"❌ OSXPhotos error scanning photos: {e}")
                     complete_progress()
                     return jsonify({
-                        'success': True,
+                        'success': False,
                         'groups': [],
                         'total_groups': 0,
-                        'message': 'No photos found'
+                        'error': f'Photo library scan error: {str(e)[:200]}',
+                        'message': 'Unable to scan Photos library. Please check compatibility.'
                     })
                 
                 # Step 2: Group photos by time and camera
@@ -2176,7 +2641,7 @@ def api_thumbnail(photo_uuid):
         
         # Find the photo in our database using the photos list
         db = scanner.get_photosdb()
-        photos = db.photos(intrash=False, movies=False)
+        photos = db.photos(intrash=False, movies=False)  # Photos only - no videos
         photo = None
         
         for p in photos:
@@ -2229,12 +2694,47 @@ def api_thumbnail(photo_uuid):
         
         # Check if this is a video file
         if photo_path.lower().endswith(('.mov', '.mp4', '.avi', '.m4v')):
-            print(f"Skipping video file for {photo_uuid}: {photo_path}")
-            return jsonify({'error': 'Thumbnail not available for video files'}), 404
+            print(f"Generating video thumbnail for {photo_uuid}: {photo_path}")
+            try:
+                # Create a simple video placeholder thumbnail
+                from PIL import Image, ImageDraw, ImageFont
+                
+                # Create a 600x400 placeholder image
+                img = Image.new('RGB', (600, 400), color=(64, 64, 64))
+                draw = ImageDraw.Draw(img)
+                
+                # Add video icon and text
+                # Draw a play button symbol
+                play_triangle = [(250, 150), (250, 250), (350, 200)]
+                draw.polygon(play_triangle, fill=(255, 255, 255))
+                
+                # Add text
+                try:
+                    font = ImageFont.load_default()
+                except:
+                    font = None
+                
+                text = f"VIDEO\n{photo_uuid[:8]}...\n{os.path.basename(photo_path)}"
+                if font:
+                    draw.text((300, 100), text, fill=(255, 255, 255), font=font, anchor="mm")
+                else:
+                    draw.text((300, 100), text, fill=(255, 255, 255), anchor="mm")
+                
+                # Save placeholder thumbnail
+                img.save(thumbnail_path, 'JPEG', quality=85, optimize=True)
+                print(f"Video placeholder thumbnail saved for {photo_uuid}: {thumbnail_path}")
+                
+                return send_file(thumbnail_path, mimetype='image/jpeg')
+                
+            except Exception as e:
+                print(f"Error generating video placeholder for {photo_uuid}: {e}")
+                return jsonify({'error': 'Could not generate video thumbnail'}), 500
         
         # Generate thumbnail
         try:
-            with Image.open(photo_path) as img:
+            # Ensure PIL Image is available in this scope
+            from PIL import Image as PILImage
+            with PILImage.open(photo_path) as img:
                 print(f"Successfully opened image for {photo_uuid}: {img.size} {img.mode}")
                 
                 # Convert to RGB if necessary
@@ -2245,7 +2745,7 @@ def api_thumbnail(photo_uuid):
                 # Calculate thumbnail size maintaining aspect ratio
                 # Use larger thumbnails for better quality assessment
                 original_size = img.size
-                img.thumbnail((600, 600), Image.Resampling.LANCZOS)
+                img.thumbnail((600, 600), PILImage.Resampling.LANCZOS)
                 print(f"Thumbnail for {photo_uuid}: {original_size} -> {img.size}")
                 
                 # Save thumbnail to cache
@@ -2505,16 +3005,16 @@ def api_complete_workflow():
         if not photo_uuids:
             return jsonify({'success': False, 'error': 'No photos provided'}), 400
         
-        session_id = f"session-{int(datetime.now().timestamp())}"
+        session_id = f"session-{datetime.now().strftime('%Y-%m-%d %H-%M-%S')}"
         print(f"🚀 Starting complete workflow for {len(photo_uuids)} photos")
         
         # Execute the actual tagging workflow
         tagging_result = tagger.tag_photos_for_deletion(photo_uuids, session_id)
         
-        # Get photo details for export
-        db = scanner.get_photosdb()
-        photos = db.photos(intrash=False, movies=False)
-        photo_lookup = {p.uuid: p for p in photos}
+        # Get photo details for export - use filtered photo set
+        filtered_photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        photo_lookup = {p.uuid: p for p in filtered_photos}
+        print(f"📤 Export lookup ready: {len(photo_lookup)} photos indexed (excluded {excluded_count} marked for deletion)")
         
         export_data = []
         for uuid in photo_uuids:
@@ -2637,13 +3137,671 @@ def api_create_album():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# ========================================
+# Stage 5A: Lazy Loading Foundation APIs
+# ========================================
+
+@app.route('/api/heatmap-data')
+def api_heatmap_data():
+    """Stage 5A: Fast metadata scan returning library stats + priority summary.
+    
+    Target: < 5 seconds for 14k+ photos
+    Returns: Dashboard data with priority buckets and cluster counts
+    """
+    try:
+        print("🚀 Stage 5A: Fast heatmap data requested...")
+        
+        # Use LazyPhotoLoader for fast metadata scan
+        library_stats, clusters = lazy_loader.get_library_metadata_fast()
+        
+        # Package response with cluster information
+        response_data = {
+            'success': True,
+            'library_stats': library_stats,
+            'clusters': {
+                'total_count': len(clusters),
+                'priority_breakdown': library_stats['priority_summary']
+            },
+            'performance': {
+                'scan_time_seconds': library_stats['scan_time_seconds'],
+                'target_met': library_stats['scan_time_seconds'] < 5.0
+            }
+        }
+        
+        print(f"✅ Heatmap data ready: {library_stats['total_photos']} photos, {len(clusters)} clusters, {library_stats['scan_time_seconds']:.1f}s")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error in heatmap data: {error_msg}")
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg,
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/filter-clusters')
+def api_filter_clusters():
+    """Stage 5A: Apply filters to cached clusters without rescanning library.
+    
+    Query parameters:
+    - year: int (2024, 2023, etc.)
+    - min_size_mb: int 
+    - max_size_mb: int
+    - priority_levels: comma-separated string ("P1,P2")
+    - camera_models: comma-separated string
+    - file_types: comma-separated string ("HEIC,JPG,PNG")
+    """
+    try:
+        # Parse query parameters
+        filters = {}
+        
+        if request.args.get('year'):
+            filters['year'] = int(request.args.get('year'))
+        
+        if request.args.get('min_size_mb'):
+            filters['min_size_mb'] = int(request.args.get('min_size_mb'))
+            
+        if request.args.get('max_size_mb'):
+            filters['max_size_mb'] = int(request.args.get('max_size_mb'))
+        
+        if request.args.get('priority_levels'):
+            filters['priority_levels'] = request.args.get('priority_levels').split(',')
+        
+        if request.args.get('camera_models'):
+            filters['camera_models'] = request.args.get('camera_models').split(',')
+        
+        if request.args.get('file_types'):
+            filters['file_types'] = request.args.get('file_types').split(',')
+        
+        print(f"🔍 Cluster filtering requested with: {filters}")
+        
+        # Apply filters using LazyPhotoLoader
+        filtered_clusters = lazy_loader.load_filtered_clusters(filters)
+        
+        # Check if photos should be included (for analysis preparation)
+        include_photos = request.args.get('include_photos') == 'true'
+        
+        # Convert to JSON-serializable format
+        clusters_data = []
+        photo_loading_failures = 0
+        total_photos_loaded = 0
+        
+        for cluster in filtered_clusters:
+            cluster_data = {
+                'cluster_id': cluster.cluster_id,
+                'photo_count': cluster.photo_count,
+                'time_span_start': cluster.time_span_start.isoformat(),
+                'time_span_end': cluster.time_span_end.isoformat(),
+                'total_size_mb': round(cluster.total_size_bytes / (1024*1024), 1),
+                'potential_savings_mb': round(cluster.potential_savings_bytes / (1024*1024), 1),
+                'duplicate_probability_score': cluster.duplicate_probability_score,
+                'priority_level': cluster.priority_level,
+                'camera_model': cluster.camera_model,
+                'location_summary': cluster.location_summary
+            }
+            
+            # Include photo UUIDs if requested (needed for analysis workflow)
+            if include_photos and hasattr(cluster, 'photo_uuids'):
+                cluster_data['photos'] = [{'uuid': uuid} for uuid in cluster.photo_uuids]
+                total_photos_loaded += len(cluster.photo_uuids)
+                print(f"✅ Used cached UUIDs: {len(cluster.photo_uuids)} photos for cluster {cluster.cluster_id}")
+            elif include_photos:
+                # Fallback: get photos from lazy loader
+                try:
+                    cluster_load_result = lazy_loader.load_cluster_photos(cluster.cluster_id)
+                    if cluster_load_result and hasattr(cluster_load_result, 'photos') and cluster_load_result.photos:
+                        cluster_data['photos'] = [{'uuid': photo.uuid} for photo in cluster_load_result.photos]
+                        total_photos_loaded += len(cluster_load_result.photos)
+                        print(f"✅ Loaded {len(cluster_load_result.photos)} photos for cluster {cluster.cluster_id}")
+                    else:
+                        print(f"⚠️ No photos found for cluster {cluster.cluster_id}")
+                        cluster_data['photos'] = []
+                        photo_loading_failures += 1
+                except Exception as e:
+                    print(f"❌ Error loading photos for cluster {cluster.cluster_id}: {e}")
+                    cluster_data['photos'] = []
+                    photo_loading_failures += 1
+            
+            clusters_data.append(cluster_data)
+        
+        # Sort by priority level then by duplicate probability score
+        priority_order = {'P1': 1, 'P2': 2, 'P3': 3, 'P4': 4, 'P5': 5, 
+                         'P6': 6, 'P7': 7, 'P8': 8, 'P9': 9, 'P10': 10}
+        clusters_data.sort(key=lambda x: (priority_order.get(x['priority_level'], 99), -x['duplicate_probability_score']))
+        
+        # Validate photo loading if requested
+        response_data = {
+            'success': True,
+            'filters_applied': filters,
+            'clusters': clusters_data,
+            'total_clusters': len(clusters_data)
+        }
+        
+        if include_photos:
+            print(f"📊 Photo loading summary: {total_photos_loaded} photos loaded, {photo_loading_failures} clusters failed")
+            response_data['photo_loading_stats'] = {
+                'total_photos_loaded': total_photos_loaded,
+                'clusters_with_failures': photo_loading_failures,
+                'success_rate': round((len(clusters_data) - photo_loading_failures) / max(len(clusters_data), 1) * 100, 1)
+            }
+            
+            # Critical validation: Fail if too many clusters have no photos
+            if photo_loading_failures > len(clusters_data) * 0.5:  # More than 50% failed
+                print(f"❌ CRITICAL: {photo_loading_failures}/{len(clusters_data)} clusters failed to load photos")
+                return jsonify({
+                    'success': False,
+                    'error': f'Photo loading failed for {photo_loading_failures} out of {len(clusters_data)} clusters. This may indicate a system issue.',
+                    'photo_loading_stats': response_data['photo_loading_stats']
+                }), 500
+            elif photo_loading_failures > 0:
+                print(f"⚠️ WARNING: {photo_loading_failures} clusters failed to load photos but continuing...")
+                response_data['warning'] = f'{photo_loading_failures} clusters failed to load photos'
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error in filter clusters: {error_msg}")
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg,
+            'clusters': []
+        }), 500
+
+@app.route('/api/cluster-analysis/<cluster_id>')
+def api_cluster_analysis(cluster_id):
+    """Stage 5A: Deep analysis of specific cluster with lazy photo loading.
+    
+    Target: < 10 seconds total (load + analyze)
+    Returns: Photo groups ready for user review
+    """
+    try:
+        print(f"🔬 Cluster analysis requested: {cluster_id}")
+        
+        # Update progress
+        update_progress(f"Loading cluster {cluster_id}", 0, 3, "Loading photos from metadata cache...")
+        
+        # Use LazyPhotoLoader for targeted analysis
+        groups = lazy_loader.analyze_cluster_photos(cluster_id, progress_callback=update_progress)
+        
+        if not groups:
+            complete_progress()
+            return jsonify({
+                'success': True,
+                'cluster_id': cluster_id,
+                'groups': [],
+                'message': 'No photo groups found for this cluster'
+            })
+        
+        # Update progress  
+        update_progress(f"Formatting results", 2, 3, f"Converting {len(groups)} photo groups to JSON...")
+        
+        # Convert to JSON-serializable format
+        groups_data = []
+        for group in groups:
+            group_data = {
+                'group_id': f"{cluster_id}_{group.group_id}",
+                'photos': [
+                    {
+                        'uuid': photo.uuid,
+                        'filename': photo.original_filename or photo.filename,
+                        'original_filename': photo.original_filename,
+                        'timestamp': photo.timestamp.isoformat() if photo.timestamp else None,
+                        'camera_model': photo.camera_model,
+                        'file_size': photo.file_size,
+                        'width': photo.width,
+                        'height': photo.height,
+                        'format': photo.format,
+                        'quality_score': photo.quality_score,
+                        'organization_score': getattr(photo, 'organization_score', 0.0),
+                        'albums': getattr(photo, 'albums', []) or [],
+                        'folder_names': getattr(photo, 'folder_names', []) or [],
+                        'keywords': getattr(photo, 'keywords', []) or [],
+                        'recommended': photo.uuid == group.recommended_photo_uuid
+                    }
+                    for photo in group.photos
+                ],
+                'time_window_start': group.time_window_start.isoformat(),
+                'time_window_end': group.time_window_end.isoformat(),
+                'camera_model': group.camera_model,
+                'total_size_bytes': group.total_size_bytes,
+                'total_size_mb': round(group.total_size_bytes / (1024 * 1024), 2),
+                'potential_savings_bytes': group.potential_savings_bytes,
+                'potential_savings_mb': round(group.potential_savings_bytes / (1024 * 1024), 2),
+                'photo_count': len(group.photos),
+                'cluster_source': cluster_id
+            }
+            groups_data.append(group_data)
+        
+        # Get cluster info for response
+        cluster = lazy_loader.get_cluster_by_id(cluster_id)
+        cluster_info = None
+        if cluster:
+            cluster_info = {
+                'photo_count': cluster.photo_count,
+                'duplicate_probability_score': cluster.duplicate_probability_score,
+                'priority_level': cluster.priority_level,
+                'total_size_mb': round(cluster.total_size_bytes / (1024*1024), 1),
+                'potential_savings_mb': round(cluster.potential_savings_bytes / (1024*1024), 1)
+            }
+        
+        complete_progress()
+        
+        print(f"✅ Cluster analysis complete: {len(groups_data)} groups ready for review")
+        
+        return jsonify({
+            'success': True,
+            'cluster_id': cluster_id,
+            'groups': groups_data,
+            'total_groups': len(groups_data),
+            'cluster_info': cluster_info,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        complete_progress()
+        error_msg = str(e)
+        print(f"❌ Error in cluster analysis: {error_msg}")
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg,
+            'cluster_id': cluster_id,
+            'groups': []
+        }), 500
+
+@app.route('/api/priority-clusters/<priority>')
+def api_priority_clusters(priority):
+    """Stage 5A: Get all clusters for specific priority level (P1, P2, etc.)."""
+    try:
+        print(f"🎯 Priority clusters requested: {priority}")
+        
+        # Validate priority level
+        valid_priorities = [f'P{i}' for i in range(1, 11)]
+        if priority not in valid_priorities:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid priority. Must be one of: {valid_priorities}',
+                'clusters': []
+            }), 400
+        
+        # Get priority clusters using LazyPhotoLoader
+        clusters = lazy_loader.get_priority_clusters(priority)
+        
+        if not clusters:
+            return jsonify({
+                'success': True,
+                'priority': priority,
+                'clusters': [],
+                'message': f'No {priority} clusters found'
+            })
+        
+        # Convert to JSON format
+        clusters_data = []
+        for cluster in clusters:
+            cluster_data = {
+                'cluster_id': cluster.cluster_id,
+                'photo_count': cluster.photo_count,
+                'time_span_start': cluster.time_span_start.isoformat(),
+                'time_span_end': cluster.time_span_end.isoformat(),
+                'total_size_mb': round(cluster.total_size_bytes / (1024*1024), 1),
+                'potential_savings_mb': round(cluster.potential_savings_bytes / (1024*1024), 1),
+                'duplicate_probability_score': cluster.duplicate_probability_score,
+                'camera_model': cluster.camera_model,
+                'location_summary': cluster.location_summary
+            }
+            clusters_data.append(cluster_data)
+        
+        # Sort by duplicate probability score (highest first)
+        clusters_data.sort(key=lambda x: x['duplicate_probability_score'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'priority': priority,
+            'clusters': clusters_data,
+            'total_clusters': len(clusters_data)
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error getting priority clusters: {error_msg}")
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg,
+            'priority': priority,
+            'clusters': []
+        }), 500
+
+@app.route('/api/cache-stats')
+def api_cache_stats():
+    """Stage 5A: Get cache statistics for debugging and monitoring."""
+    try:
+        cache_stats = lazy_loader.get_cache_stats()
+        
+        return jsonify({
+            'success': True,
+            'cache_stats': cache_stats,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/clear-cache', methods=['POST'])
+def api_clear_cache():
+    """Stage 5A: Clear all cached data to free memory."""
+    try:
+        lazy_loader.clear_cache()
+        
+        # Also clear legacy caches
+        global cached_groups, cached_timestamp, cached_library_stats, cached_clusters, cached_library_timestamp
+        cached_groups = None
+        cached_timestamp = None
+        cached_library_stats = None
+        cached_clusters = None
+        cached_library_timestamp = None
+        
+        return jsonify({
+            'success': True,
+            'message': 'All caches cleared successfully',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/filter-distributions')
+def api_filter_distributions():
+    """Stage 5B: Get distribution statistics for all filter categories."""
+    try:
+        # Debug cache state
+        cluster_cache_size = len(lazy_loader._cluster_cache) if lazy_loader._cluster_cache else 0
+        metadata_cache_size = len(lazy_loader._metadata_cache) if lazy_loader._metadata_cache else 0
+        print(f"🔍 Filter distributions: cluster_cache={cluster_cache_size}, metadata_cache={metadata_cache_size}")
+        
+        # Ensure we have cached data
+        if not lazy_loader._cluster_cache or not lazy_loader._metadata_cache:
+            return jsonify({
+                'success': False,
+                'error': f'No cached data available (clusters: {cluster_cache_size}, metadata: {metadata_cache_size}). Please load heatmap data first.'
+            }), 400
+        
+        clusters = list(lazy_loader._cluster_cache.values())
+        metadata = list(lazy_loader._metadata_cache.values())
+        
+        print(f"📊 Computing distribution statistics for {len(clusters)} clusters, {len(metadata)} photos...")
+        
+        # Year distribution
+        year_distribution = {}
+        for photo in metadata:
+            year = photo.timestamp.year if photo.timestamp else 'Unknown'
+            year_distribution[year] = year_distribution.get(year, 0) + 1
+        
+        # File type distribution  
+        file_type_distribution = {}
+        for photo in metadata:
+            if '.' in photo.filename:
+                ext = photo.filename.split('.')[-1].upper()
+                # Normalize JPEG to JPG
+                if ext == 'JPEG':
+                    ext = 'JPG'
+                file_type_distribution[ext] = file_type_distribution.get(ext, 0) + 1
+        
+        # Priority distribution with savings
+        priority_distribution = {}
+        for cluster in clusters:
+            priority = cluster.priority_level
+            if priority not in priority_distribution:
+                priority_distribution[priority] = {
+                    'cluster_count': 0,
+                    'photo_count': 0,
+                    'total_savings_bytes': 0,
+                    'total_size_bytes': 0
+                }
+            
+            priority_distribution[priority]['cluster_count'] += 1
+            priority_distribution[priority]['photo_count'] += cluster.photo_count
+            priority_distribution[priority]['total_savings_bytes'] += cluster.potential_savings_bytes
+            priority_distribution[priority]['total_size_bytes'] += cluster.total_size_bytes
+        
+        # Size distribution (histogram data)
+        size_histogram = {}
+        for photo in metadata:
+            size_mb = photo.file_size / (1024 * 1024) if photo.file_size else 0
+            # Create 10MB buckets
+            bucket = int(size_mb // 10) * 10
+            if bucket > 100:
+                bucket = 100  # Cap at 100+ MB bucket
+            size_histogram[bucket] = size_histogram.get(bucket, 0) + 1
+        
+        # Calculate smart recommendations
+        high_value_priorities = ['P1', 'P2']
+        high_value_clusters = [c for c in clusters if c.priority_level in high_value_priorities]
+        
+        # Find most common year for recommendations
+        most_common_year = max(year_distribution.items(), key=lambda x: x[1] if isinstance(x[0], int) and x[0] >= 2020 else 0)
+        
+        # Find dominant file type
+        dominant_file_type = max(file_type_distribution.items(), key=lambda x: x[1])
+        
+        # Create smart recommendation
+        smart_recommendation = {
+            'title': f'Focus on {most_common_year[0]} {dominant_file_type[0]} files with P1-P2 priority',
+            'filters': {
+                'year': most_common_year[0] if isinstance(most_common_year[0], int) else None,
+                'file_types': [dominant_file_type[0]],
+                'priority_levels': ['P1', 'P2'],
+                'min_size_mb': 5
+            },
+            'expected_clusters': len([c for c in high_value_clusters 
+                                    if c.time_span_start.year == most_common_year[0]]),
+            'expected_savings_gb': sum(c.potential_savings_bytes for c in high_value_clusters 
+                                     if c.time_span_start.year == most_common_year[0]) / (1024**3)
+        }
+        
+        response_data = {
+            'success': True,
+            'distributions': {
+                'years': dict(sorted(year_distribution.items(), reverse=True)),
+                'file_types': dict(sorted(file_type_distribution.items(), key=lambda x: x[1], reverse=True)),
+                'priorities': dict(sorted(priority_distribution.items())),
+                'size_histogram': dict(sorted(size_histogram.items()))
+            },
+            'smart_recommendation': smart_recommendation,
+            'totals': {
+                'photos': len(metadata),
+                'clusters': len(clusters),
+                'total_savings_gb': sum(c.potential_savings_bytes for c in clusters) / (1024**3)
+            }
+        }
+        
+        print(f"✅ Distribution statistics computed successfully")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error computing filter distributions: {error_msg}")
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+@app.route('/api/save-filter-session', methods=['POST'])
+def api_save_filter_session():
+    """Save filter criteria and selected clusters to session for dashboard handoff."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        # Validate incoming data quality
+        selected_photo_uuids = data.get('selected_photo_uuids', [])
+        total_photos = data.get('total_photos_in_filter', 0)
+        total_clusters = data.get('total_clusters_in_filter', 0)
+        
+        # Critical validation checks
+        if not selected_photo_uuids:
+            return jsonify({
+                'success': False, 
+                'error': 'No photo UUIDs provided. Cannot create analysis session without photos to analyze.',
+                'debug_info': {
+                    'received_uuids': len(selected_photo_uuids),
+                    'reported_total': total_photos,
+                    'clusters': total_clusters
+                }
+            }), 400
+        
+        if total_photos != len(selected_photo_uuids):
+            print(f"⚠️ WARNING: Reported photo count ({total_photos}) doesn't match UUID count ({len(selected_photo_uuids)})")
+        
+        if total_clusters == 0:
+            return jsonify({
+                'success': False,
+                'error': 'No clusters selected. Cannot create analysis session without clusters to analyze.'
+            }), 400
+        
+        # Create session ID for server-side storage
+        session_id = secrets.token_hex(8)
+        
+        # Store large data server-side to avoid huge cookies
+        server_side_sessions[session_id] = {
+            'selected_photo_uuids': selected_photo_uuids,
+            'cluster_summaries': data.get('cluster_summaries', []),
+            'timestamp': datetime.now().isoformat(),
+        }
+        
+        # Store only minimal data in Flask session
+        filter_session = {
+            'filter_criteria': data.get('filter_criteria', {}),
+            'total_photos_in_filter': len(selected_photo_uuids),  # Use actual count
+            'total_clusters_in_filter': total_clusters,
+            'session_id': session_id
+        }
+        
+        session['filter_session'] = filter_session
+        session.permanent = True
+        
+        print(f"💾 Filter session saved: {filter_session['total_clusters_in_filter']} clusters, {filter_session['total_photos_in_filter']} photos")
+        print(f"🔍 Filter criteria: {filter_session['filter_criteria']}")
+        
+        return jsonify({
+            'success': True,
+            'session_id': filter_session['session_id'],
+            'message': f"Saved session with {filter_session['total_clusters_in_filter']} clusters for analysis"
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error saving filter session: {error_msg}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': error_msg}), 500
+
+@app.route('/api/get-filter-session')
+def api_get_filter_session():
+    """Get current filter session data for dashboard mode detection."""
+    try:
+        filter_session = session.get('filter_session')
+        
+        if not filter_session:
+            return jsonify({
+                'success': True,
+                'has_session': False,
+                'mode': 'overview'
+            })
+        
+        # Get server-side session data
+        session_id = filter_session.get('session_id')
+        server_data = server_side_sessions.get(session_id, {})
+        
+        # Check if session is still fresh (not older than 1 hour)  
+        if server_data:
+            session_time = datetime.fromisoformat(server_data['timestamp'])
+        else:
+            # Fallback to session creation time
+            session_time = datetime.now()
+        time_diff = (datetime.now() - session_time).total_seconds()
+        
+        if time_diff > 3600:  # 1 hour timeout
+            session.pop('filter_session', None)
+            if session_id in server_side_sessions:
+                del server_side_sessions[session_id]
+            return jsonify({
+                'success': True,
+                'has_session': False,
+                'mode': 'overview',
+                'message': 'Session expired'
+            })
+        
+        # Merge server-side data with session data for full response
+        full_session_data = {**filter_session}
+        if server_data:
+            full_session_data.update({
+                'selected_photo_uuids': server_data.get('selected_photo_uuids', []),
+                'cluster_summaries': server_data.get('cluster_summaries', []),
+                'timestamp': server_data.get('timestamp')
+            })
+        
+        return jsonify({
+            'success': True,
+            'has_session': True,
+            'mode': 'filtered',
+            'filter_session': full_session_data
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error getting filter session: {error_msg}")
+        return jsonify({'success': False, 'error': error_msg}), 500
+
+@app.route('/api/clear-filter-session', methods=['POST'])
+def api_clear_filter_session():
+    """Clear filter session to return to overview mode."""
+    try:
+        filter_session = session.get('filter_session')
+        if filter_session:
+            session_id = filter_session.get('session_id')
+            if session_id and session_id in server_side_sessions:
+                del server_side_sessions[session_id]
+                
+        session.pop('filter_session', None)
+        print("🗑️ Filter session cleared - returning to overview mode")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Filter session cleared'
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error clearing filter session: {error_msg}")
+        return jsonify({'success': False, 'error': error_msg}), 500
+
 @app.route('/api/health')
 def api_health():
     """Health check endpoint."""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'stage': 'Stage 4: Photos Library Integration'
+        'stage': 'Stage 5A: Lazy Loading Foundation'
     })
 
 if __name__ == '__main__':

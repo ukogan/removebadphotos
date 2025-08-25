@@ -72,6 +72,25 @@ class PhotoScanner:
             self.photosdb = osxphotos.PhotosDB()
         return self.photosdb
     
+    def get_unprocessed_photos(self, include_videos: bool = False):
+        """Get photos excluding those in trash and already marked for deletion."""
+        db = self.get_photosdb()
+        all_photos = db.photos(intrash=False, movies=not include_videos)
+        
+        # Filter out photos already marked for deletion
+        photos = []
+        marked_for_deletion_count = 0
+        for photo in all_photos:
+            if photo.keywords and "marked-for-deletion" in photo.keywords:
+                marked_for_deletion_count += 1
+                continue
+            photos.append(photo)
+        
+        if marked_for_deletion_count > 0:
+            print(f"🔄 Excluded {marked_for_deletion_count} photos already marked for deletion")
+        
+        return photos, marked_for_deletion_count
+    
     def extract_photo_metadata(self, photo) -> PhotoData:
         """Extract metadata from osxphotos Photo object."""
         try:
@@ -250,7 +269,20 @@ class PhotoScanner:
         db = self.get_photosdb()
         # Explicitly exclude Recently Deleted photos to prevent duplicate processing
         # of photos that user has already deleted
-        photos = db.photos(intrash=False, movies=False)
+        all_photos = db.photos(intrash=False, movies=False)
+        
+        # Filter out photos that are already marked for deletion to prevent reprocessing
+        photos = []
+        marked_for_deletion_count = 0
+        for photo in all_photos:
+            if photo.keywords and "marked-for-deletion" in photo.keywords:
+                marked_for_deletion_count += 1
+                continue
+            photos.append(photo)
+        
+        if marked_for_deletion_count > 0:
+            print(f"🔄 Excluded {marked_for_deletion_count} photos already marked for deletion")
+        print(f"📊 Processing {len(photos)} photos for analysis")
         
         if prioritize_accessible:
             print("🔍 Prioritizing locally accessible photos for better thumbnail support...")
