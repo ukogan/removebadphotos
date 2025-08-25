@@ -48,6 +48,11 @@ cached_library_stats = None
 cached_clusters = None
 cached_library_timestamp = None
 
+# Analysis cache for streamlined workflow
+analysis_cache = {}
+CACHE_EXPIRY_MINUTES = 30
+MAX_CACHED_ANALYSES = 10
+
 # Server-side session storage to avoid large cookies
 server_side_sessions = {}
 
@@ -2295,12 +2300,79 @@ def api_groups():
     
     try:
         limit = request.args.get('limit', 10, type=int)
+        page = request.args.get('page', 1, type=int)
         priority = request.args.get('priority')
         
-        print(f"🎯 api_groups called with limit={limit}, priority={priority}")
+        print(f"🎯 api_groups called with limit={limit}, page={page}, priority={priority}")
         print(f"🎯 Session keys: {list(session.keys())}")
         
-        # FIRST: Check if we have a filtered session (the main workflow)
+        # NEW: Check for unified analysis cache first (streamlined workflow)
+        if analysis_cache:
+            latest_cache_key = max(analysis_cache.keys(), key=lambda k: analysis_cache[k]['timestamp'])
+            cached_analysis = analysis_cache[latest_cache_key]
+            
+            # Check if cache is still valid
+            from datetime import timedelta
+            if datetime.now() - cached_analysis['timestamp'] <= timedelta(minutes=CACHE_EXPIRY_MINUTES):
+                print(f"🚀 Using unified analysis cache: {latest_cache_key} ({len(cached_analysis['all_groups'])} groups)")
+                
+                all_groups = cached_analysis['all_groups']
+                
+                # Convert unified format to legacy format
+                legacy_groups = []
+                for group in all_groups:
+                    legacy_group = {
+                        'group_id': group['id'],
+                        'photos': [
+                            {
+                                'uuid': photo['uuid'],
+                                'filename': photo['filename'],
+                                'original_filename': photo.get('original_filename'),
+                                'timestamp': photo.get('date_taken'),
+                                'camera_model': photo.get('camera_model', 'Unknown'),
+                                'file_size': photo.get('file_size_bytes', 0),
+                                'width': 0,  # Not available in unified format
+                                'height': 0,  # Not available in unified format
+                                'format': 'Unknown',  # Not available in unified format
+                                'quality_score': photo.get('quality_score', 0.0),
+                                'organization_score': 0.0,  # Not available in unified format
+                                'albums': [],  # Not available in unified format
+                                'folder_names': [],  # Not available in unified format
+                                'keywords': [],  # Not available in unified format
+                                'recommended': photo['uuid'] == group['impact']['best_photo_uuid']
+                            }
+                            for photo in group['photos']
+                        ],
+                        'time_window_start': group.get('timestamp', ''),
+                        'time_window_end': group.get('timestamp', ''),
+                        'camera_model': group.get('camera_model', 'Unknown'),
+                        'total_size_bytes': group['impact']['total_savings_bytes'] + max(photo.get('file_size_bytes', 0) for photo in group['photos']),
+                        'potential_savings_bytes': group['impact']['total_savings_bytes'],
+                        'recommended_photo_uuid': group['impact']['best_photo_uuid']
+                    }
+                    legacy_groups.append(legacy_group)
+                
+                # Apply pagination
+                start_idx = (page - 1) * limit
+                end_idx = start_idx + limit
+                paginated_groups = legacy_groups[start_idx:end_idx]
+                
+                print(f"📄 Returning page {page}: groups {start_idx+1}-{min(end_idx, len(all_groups))} of {len(all_groups)}")
+                
+                return jsonify({
+                    'success': True,
+                    'groups': paginated_groups,
+                    'total_groups': len(all_groups),
+                    'current_page': page,
+                    'total_pages': (len(all_groups) + limit - 1) // limit,
+                    'has_next': end_idx < len(all_groups),
+                    'has_previous': page > 1,
+                    'mode': 'unified_analysis',
+                    'cache_key': latest_cache_key,
+                    'message': f'Showing {len(paginated_groups)} groups from unified analysis (page {page})'
+                })
+        
+        # EXISTING: Check if we have a filtered session (the main workflow)
         filter_session = session.get('filter_session')
         print(f"🎯 Filter session: {filter_session is not None}")
         
@@ -2990,6 +3062,46 @@ def api_open_photo(photo_uuid):
             'error': f'Error opening photo: {str(e)}'
         }), 500
 
+@app.route('/api/debug-filename/<filename>')
+def api_debug_filename(filename):
+    """Debug endpoint to search for photos by filename and check their keyword status."""
+    try:
+        db = scanner.get_photosdb()
+        # Include photos in trash to see if that's where deleted ones are
+        all_photos = db.photos(intrash=True)
+        
+        matches = []
+        for photo in all_photos:
+            photo_filename = photo.filename or photo.original_filename or ""
+            if filename.lower() in photo_filename.lower():
+                keywords = list(photo.keywords) if photo.keywords else []
+                has_marked_for_deletion = "marked-for-deletion" in keywords
+                
+                matches.append({
+                    "uuid": photo.uuid,
+                    "filename": photo_filename,
+                    "keywords": keywords,
+                    "has_marked_for_deletion": has_marked_for_deletion,
+                    "date": photo.date.isoformat() if photo.date else None,
+                    "path": photo.path,
+                    "albums": [album.title for album in photo.albums] if photo.albums else [],
+                    "intrash": photo.intrash,
+                    "edited": photo.hasadjustments
+                })
+        
+        return jsonify({
+            "success": True,
+            "filename_searched": filename,
+            "matches_found": len(matches),
+            "matches": matches
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
 # ========================================
 # Stage 4: Photos Library Integration
 # ========================================
@@ -3010,6 +3122,11 @@ def api_complete_workflow():
         
         # Execute the actual tagging workflow
         tagging_result = tagger.tag_photos_for_deletion(photo_uuids, session_id)
+        
+        # Add UUIDs to persistent tracking to prevent reappearance
+        if tagging_result.photos_tagged > 0:
+            scanner.add_processed_uuids(photo_uuids)
+            print(f"💾 Added {len(photo_uuids)} UUIDs to persistent tracking")
         
         # Get photo details for export - use filtered photo set
         filtered_photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
@@ -3794,6 +3911,277 @@ def api_clear_filter_session():
         error_msg = str(e)
         print(f"❌ Error clearing filter session: {error_msg}")
         return jsonify({'success': False, 'error': error_msg}), 500
+
+def calculate_storage_impact(photo_group):
+    """
+    Calculate potential storage savings for a group
+    Priority factors:
+    1. Total file size of duplicates (primary)
+    2. Number of photos in group (secondary) 
+    3. Quality score confidence (tertiary)
+    """
+    photos = photo_group['photos']
+    
+    # Find best photo (highest quality score)
+    best_photo = max(photos, key=lambda p: p.get('quality_score', 0))
+    duplicate_photos = [p for p in photos if p['uuid'] != best_photo['uuid']]
+    
+    # Calculate savings
+    duplicate_sizes = [p.get('file_size_bytes', 0) for p in duplicate_photos]
+    total_savings_bytes = sum(duplicate_sizes)
+    
+    # Calculate priority score
+    impact_score = (
+        total_savings_bytes * 1.0 +           # Primary: raw savings
+        len(duplicate_photos) * 10000000 +     # Secondary: photo count weight  
+        best_photo.get('quality_score', 0) * 1000000  # Tertiary: confidence weight
+    )
+    
+    return {
+        'total_savings_bytes': total_savings_bytes,
+        'duplicate_count': len(duplicate_photos),
+        'impact_score': impact_score,
+        'best_photo_uuid': best_photo['uuid']
+    }
+
+def sort_duplicate_groups(groups, sort_key='savings_desc'):
+    """Sort duplicate groups by various criteria."""
+    sort_functions = {
+        'savings_desc': lambda g: g.get('impact', {}).get('total_savings_bytes', 0),
+        'count_desc': lambda g: g.get('impact', {}).get('duplicate_count', 0), 
+        'date_desc': lambda g: max((p.get('date_taken', '') for p in g.get('photos', [])), default=''),
+        'quality_desc': lambda g: max((p.get('quality_score', 0) for p in g.get('photos', [])), default=0)
+    }
+    
+    sort_func = sort_functions.get(sort_key, sort_functions['savings_desc'])
+    return sorted(groups, key=sort_func, reverse=True)
+
+def cache_analysis_results(groups, filter_criteria):
+    """Cache complete analysis results with expiry management."""
+    import uuid
+    from datetime import timedelta
+    
+    # Generate unique cache key
+    cache_key = f"analysis_{uuid.uuid4().hex[:8]}"
+    
+    # Clean expired cache entries
+    now = datetime.now()
+    expired_keys = [
+        key for key, data in analysis_cache.items()
+        if now - data['timestamp'] > timedelta(minutes=CACHE_EXPIRY_MINUTES)
+    ]
+    for key in expired_keys:
+        del analysis_cache[key]
+    
+    # LRU eviction if cache is full
+    if len(analysis_cache) >= MAX_CACHED_ANALYSES:
+        oldest_key = min(analysis_cache.keys(), key=lambda k: analysis_cache[k]['timestamp'])
+        del analysis_cache[oldest_key]
+    
+    # Cache the results
+    analysis_cache[cache_key] = {
+        'timestamp': now,
+        'filter_criteria': filter_criteria,
+        'all_groups': groups,
+        'total_groups': len(groups),
+        'analysis_metadata': {
+            'cache_created': now.isoformat(),
+            'total_photos_analyzed': sum(len(g.get('photos', [])) for g in groups),
+            'potential_savings_gb': sum(g.get('impact', {}).get('total_savings_bytes', 0) for g in groups) / (1024**3)
+        }
+    }
+    
+    return cache_key
+
+def paginate_groups(groups, page=1, limit=10):
+    """Paginate group results."""
+    start_idx = (page - 1) * limit
+    end_idx = start_idx + limit
+    
+    paginated_groups = groups[start_idx:end_idx]
+    
+    return {
+        'groups': paginated_groups,
+        'pagination': {
+            'current_page': page,
+            'total_pages': (len(groups) + limit - 1) // limit,
+            'total_groups': len(groups),
+            'groups_per_page': limit,
+            'has_next': end_idx < len(groups),
+            'has_previous': page > 1
+        }
+    }
+
+@app.route('/api/analyze-duplicates', methods=['POST'])
+def api_analyze_duplicates():
+    """
+    Single comprehensive endpoint that:
+    1. Takes filter criteria from request
+    2. Runs complete analysis pipeline
+    3. Returns paginated results sorted by impact
+    """
+    try:
+        print("🔄 Starting unified duplicate analysis...")
+        start_time = datetime.now()
+        
+        # Parse request data
+        request_data = request.get_json() or {}
+        filter_criteria = request_data.get('filters', {})
+        pagination_params = request_data.get('pagination', {'page': 1, 'limit': 10, 'sort': 'savings_desc'})
+        
+        # Step 1: Apply filters using existing filter logic
+        photos, excluded_count = scanner.get_unprocessed_photos()
+        print(f"📊 Found {len(photos)} photos ({excluded_count} already marked for deletion)")
+        
+        # Apply user filters
+        filtered_photos = photos  # TODO: Apply actual user filters here
+        
+        # Step 2: Run complete duplicate analysis using existing detection system
+        print("🔍 Running comprehensive duplicate analysis...")
+        photo_groups = []
+        
+        # Use the same proven analysis pipeline from /api/groups
+        scan_limit = min(len(filtered_photos), 5000)  # Reasonable limit for performance
+        analysis_photos_raw = filtered_photos[:scan_limit]
+        
+        print(f"🔍 Converting {len(analysis_photos_raw)} PhotoInfo objects to PhotoData...")
+        
+        # Convert PhotoInfo objects to PhotoData objects
+        analysis_photos = []
+        for photo_info in analysis_photos_raw:
+            try:
+                photo_data = scanner.extract_photo_metadata(photo_info)
+                analysis_photos.append(photo_data)
+            except Exception as e:
+                print(f"⚠️ Skipping photo {getattr(photo_info, 'uuid', 'unknown')}: {e}")
+                continue
+        
+        print(f"✅ Successfully converted {len(analysis_photos)} photos for analysis")
+        
+        # Step 2.1: Group photos by time and camera (10-second windows)
+        groups = scanner.group_photos_by_time_and_camera(analysis_photos)
+        print(f"📊 Created {len(groups)} initial time-based groups")
+        
+        # Step 2.2: Enhanced grouping with quality analysis  
+        groups = scanner.enhanced_grouping_with_similarity(groups, progress_callback=None)
+        print(f"🎯 Enhanced grouping complete: {len(groups)} groups with quality scores")
+        
+        # Step 2.3: Visual similarity filtering (70% threshold)
+        groups = scanner.filter_groups_by_visual_similarity(groups, similarity_threshold=70.0)
+        print(f"✅ Visual similarity filtering: {len(groups)} final duplicate groups")
+        
+        # Step 2.4: Convert to unified format with impact calculation
+        for group in groups:
+            if len(group.photos) > 1:  # Only include actual duplicates
+                # Convert PhotoData objects to API format
+                photos_data = []
+                for photo in group.photos:
+                    photos_data.append({
+                        'uuid': photo.uuid,
+                        'filename': photo.filename or 'Unknown',
+                        'original_filename': getattr(photo, 'original_filename', None),
+                        'file_size_bytes': photo.file_size or 0,
+                        'quality_score': getattr(photo, 'quality_score', 0.0),
+                        'date_taken': photo.timestamp.isoformat() if photo.timestamp else '',
+                        'camera_model': photo.camera_model or 'Unknown'
+                    })
+                
+                # Create group with impact calculation
+                unified_group = {
+                    'id': group.group_id,
+                    'photos': photos_data,
+                    'timestamp': group.time_window_start.isoformat() if group.time_window_start else '',
+                    'camera_model': group.camera_model or 'Unknown',
+                    'similarity_score': 0.85  # Default similarity score for groups that passed filtering
+                }
+                
+                # Calculate storage impact
+                unified_group['impact'] = calculate_storage_impact(unified_group)
+                photo_groups.append(unified_group)
+        
+        analysis_summary = {
+            'total_photos_analyzed': len(analysis_photos),
+            'total_groups_found': len(photo_groups),
+            'potential_savings_gb': round(sum(g['impact']['total_savings_bytes'] for g in photo_groups) / (1024**3), 2),
+            'analysis_duration_seconds': round((datetime.now() - start_time).total_seconds(), 1)
+        }
+        
+        # Step 4: Sort by impact
+        sorted_groups = sort_duplicate_groups(photo_groups, pagination_params.get('sort', 'savings_desc'))
+        
+        # Step 5: Cache and paginate
+        cache_key = cache_analysis_results(sorted_groups, filter_criteria)
+        paginated_results = paginate_groups(sorted_groups, pagination_params.get('page', 1), pagination_params.get('limit', 10))
+        
+        analysis_duration = (datetime.now() - start_time).total_seconds()
+        
+        print(f"✅ Analysis complete: {len(sorted_groups)} groups, {analysis_duration:.1f}s")
+        
+        return jsonify({
+            'success': True,
+            'analysis': analysis_summary,
+            'results': paginated_results,
+            'cache_key': cache_key if sorted_groups else None,
+            'timestamp': datetime.now().isoformat(),
+            'note': 'MVP implementation - full analysis integration coming in next iteration'
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error in unified analysis: {error_msg}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': error_msg}), 500
+
+@app.route('/api/load-more-duplicates', methods=['GET'])
+def api_load_more_duplicates():
+    """
+    Fast pagination endpoint for cached results:
+    - Takes cache_key + page number
+    - Returns next page of results
+    - No re-analysis required
+    """
+    try:
+        cache_key = request.args.get('cache_key')
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 10, type=int)
+        
+        if not cache_key or cache_key not in analysis_cache:
+            return jsonify({'success': False, 'error': 'Analysis cache not found or expired'}), 404
+        
+        cached_analysis = analysis_cache[cache_key]
+        
+        # Check if cache is expired
+        from datetime import timedelta
+        if datetime.now() - cached_analysis['timestamp'] > timedelta(minutes=CACHE_EXPIRY_MINUTES):
+            del analysis_cache[cache_key]
+            return jsonify({'success': False, 'error': 'Analysis cache expired'}), 410
+        
+        # Paginate cached results
+        all_groups = cached_analysis['all_groups']
+        paginated_results = paginate_groups(all_groups, page, limit)
+        
+        print(f"📄 Loading page {page}: {len(paginated_results['groups'])} groups")
+        
+        return jsonify({
+            'success': True,
+            'results': paginated_results,
+            'cache_key': cache_key,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error loading more duplicates: {error_msg}")
+        return jsonify({'success': False, 'error': error_msg}), 500
+
+@app.route('/duplicates')
+def duplicates_interface():
+    """New streamlined duplicates review interface."""
+    try:
+        with open('/Users/urikogan/code/dedup/duplicates_interface.html', 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Duplicates interface not found", 404
 
 @app.route('/api/health')
 def api_health():

@@ -413,6 +413,59 @@
         
         async function loadDashboard() {
             try {
+                // First check if we have a filter session (filtered mode)
+                console.log('Checking for filter session...');
+                const sessionResponse = await fetch('/api/get-filter-session');
+                const sessionData = await sessionResponse.json();
+                
+                if (sessionData.success && sessionData.has_session && sessionData.mode === 'filtered') {
+                    console.log('📊 Loading dashboard in FILTERED mode:', sessionData.filter_session);
+                    await loadFilteredDashboard(sessionData.filter_session);
+                } else {
+                    console.log('📊 Loading dashboard in OVERVIEW mode');
+                    await loadOverviewDashboard();
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showError(`Failed to load dashboard: ${error.message}`);
+            }
+        }
+        
+        async function loadFilteredDashboard(filterSession) {
+            try {
+                console.log('🎯 Filtered analysis mode activated');
+                console.log('Filter criteria:', filterSession.filter_criteria);
+                console.log('Selected clusters:', filterSession.total_clusters_in_filter);
+                
+                // Load library stats
+                const response = await fetch('/api/library-stats');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+                
+                dashboardData = { 
+                    library_stats: data.stats,
+                    filter_session: filterSession,
+                    mode: 'filtered'
+                };
+                
+                updateFilteredDashboardUI();
+                setupFilteredAnalysisControls();
+                
+            } catch (error) {
+                console.error('Error loading filtered dashboard:', error);
+                showError(`Failed to load filtered dashboard: ${error.message}`);
+            }
+        }
+        
+        async function loadOverviewDashboard() {
+            try {
                 console.log('Loading basic library stats...');
                 const response = await fetch('/api/library-stats');
                 
@@ -426,15 +479,16 @@
                     throw new Error(data.error || 'Unknown error occurred');
                 }
                 
-                dashboardData = { library_stats: data.stats };
+                dashboardData = { 
+                    library_stats: data.stats,
+                    mode: 'overview'
+                };
+                
                 updateDashboardUI();
                 setupAnalysisControls();
                 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('dashboard-content').style.display = 'block';
-                
             } catch (error) {
-                console.error('Error loading dashboard:', error);
+                console.error('Error loading overview dashboard:', error);
                 showError(`Failed to load dashboard: ${error.message}`);
             }
         }
@@ -470,6 +524,130 @@
                     tag.textContent = camera || 'Unknown';
                     camerasContainer.appendChild(tag);
                 });
+            }
+        }
+        
+        function updateFilteredDashboardUI() {
+            if (!dashboardData || !dashboardData.filter_session) return;
+            
+            const filterSession = dashboardData.filter_session;
+            const stats = dashboardData.library_stats;
+            
+            // Update header to indicate filtered mode
+            const headerTitle = document.querySelector('.header h1');
+            const headerDesc = document.querySelector('.header p');
+            headerTitle.innerHTML = '📊 Filtered Analysis Dashboard';
+            headerDesc.innerHTML = `Analyzing ${filterSession.total_clusters_in_filter} targeted clusters from your library`;
+            
+            // Update overview section title
+            const overviewTitle = document.querySelector('.stats-overview h2');
+            overviewTitle.innerHTML = '🎯 Filtered Analysis Overview';
+            
+            // Update library stats with filtered context
+            document.getElementById('total-photos').textContent = filterSession.total_photos_in_filter.toLocaleString() + ' (filtered)';
+            document.getElementById('library-size').textContent = 'Filtered subset';
+            document.getElementById('estimated-duplicates').textContent = filterSession.total_clusters_in_filter + ' selected';
+            document.getElementById('potential-savings').textContent = 'To be calculated';
+            
+            if (stats.date_range_start && stats.date_range_end) {
+                const startYear = new Date(stats.date_range_start).getFullYear();
+                const endYear = new Date(stats.date_range_end).getFullYear();
+                document.getElementById('date-range').textContent = `${startYear}-${endYear}`;
+            } else {
+                document.getElementById('date-range').textContent = 'TBD';
+            }
+            
+            document.getElementById('cluster-count').textContent = filterSession.total_clusters_in_filter + ' targeted';
+            
+            // Add filter criteria display
+            if (filterSession.filter_criteria) {
+                const criteria = filterSession.filter_criteria;
+                let criteriaText = 'Active filters: ';
+                
+                if (criteria.start_year && criteria.end_year) {
+                    criteriaText += `${criteria.start_year}-${criteria.end_year}, `;
+                } else if (criteria.year) {
+                    criteriaText += `Year ${criteria.year}, `;
+                }
+                if (criteria.file_types && criteria.file_types.length > 0) {
+                    criteriaText += `${criteria.file_types.join(', ')}, `;
+                }
+                if (criteria.min_size_mb) {
+                    criteriaText += `≥${criteria.min_size_mb}MB, `;
+                }
+                if (criteria.priority_levels && criteria.priority_levels.length > 0) {
+                    criteriaText += `Priority: ${criteria.priority_levels.join(', ')}, `;
+                }
+                
+                criteriaText = criteriaText.replace(/, $/, '');
+                
+                // Add filter display below overview
+                const statsOverview = document.querySelector('.stats-overview');
+                let filterDisplay = document.getElementById('filter-criteria-display');
+                if (!filterDisplay) {
+                    filterDisplay = document.createElement('div');
+                    filterDisplay.id = 'filter-criteria-display';
+                    filterDisplay.style.cssText = 'background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 8px; padding: 16px; margin-top: 20px; color: #0c5460;';
+                    statsOverview.appendChild(filterDisplay);
+                }
+                filterDisplay.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🎯</span>
+                        <div>
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Filtered Analysis Mode</div>
+                            <div style="font-size: 13px;">${criteriaText}</div>
+                        </div>
+                        <button onclick="clearFilterSession()" style="margin-left: auto; background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">Clear Filters</button>
+                    </div>
+                `;
+            }
+            
+            // Update cameras if available
+            if (stats.camera_models && stats.camera_models.length > 0) {
+                const camerasContainer = document.getElementById('cameras-tags');
+                camerasContainer.innerHTML = '';
+                stats.camera_models.forEach(camera => {
+                    const tag = document.createElement('div');
+                    tag.className = 'camera-tag';
+                    tag.textContent = camera || 'Unknown';
+                    camerasContainer.appendChild(tag);
+                });
+            }
+        }
+        
+        function setupFilteredAnalysisControls() {
+            // Update analysis controls title to reflect filtered mode
+            const controlsTitle = document.querySelector('.analysis-controls h2');
+            controlsTitle.innerHTML = '🎯 Filtered Analysis Controls';
+            
+            // Update analysis description to reflect we're working with filtered data
+            const analysisDescription = document.getElementById('analysis-description');
+            analysisDescription.innerHTML = 'Analyzing selected clusters from filter criteria - focusing on targeted portion of library';
+            
+            // Set up controls similar to overview mode but with filtered context
+            setupAnalysisControls();
+            
+            // Modify the start analysis button text
+            const startBtn = document.getElementById('start-analysis');
+            startBtn.innerHTML = '🚀 Analyze Selected Clusters';
+            
+            // Update analysis preview text
+            const previewDiv = document.getElementById('analysis-preview');
+            if (dashboardData.filter_session) {
+                previewDiv.innerHTML = `Will analyze ${dashboardData.filter_session.total_clusters_in_filter} clusters from filtered selection`;
+            }
+        }
+        
+        function clearFilterSession() {
+            if (confirm('This will clear your current filter selection and return to overview mode. Continue?')) {
+                fetch('/api/clear-filter-session', { method: 'POST' })
+                    .then(() => {
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error clearing filter session:', error);
+                        alert('Error clearing filter session');
+                    });
             }
         }
         
@@ -595,7 +773,13 @@
                     // Final progress update
                     progressLog.innerHTML += '<div style="color: #28a745; font-weight: bold; margin-top: 8px;">✅ Analysis completed successfully!</div>';
                 } else {
-                    throw new Error(data.error || 'Analysis failed');
+                    // Enhanced error reporting with debug info
+                    let errorMsg = data.error || 'Analysis failed';
+                    if (data.debug_info) {
+                        console.error('Analysis failure debug info:', data.debug_info);
+                        errorMsg += '\n\nThis may indicate an issue with the selected photos or filters.';
+                    }
+                    throw new Error(errorMsg);
                 }
                 
             } catch (error) {

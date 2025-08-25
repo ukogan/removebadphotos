@@ -395,6 +395,12 @@
             <!-- Photo groups will be populated here -->
         </div>
 
+        <!-- Pagination controls -->
+        <div id="paginationControls" class="controls" style="display: none;">
+            <button class="btn" onclick="loadMoreGroups()" id="loadMoreBtn">📄 Load More Groups</button>
+            <span id="paginationStatus" style="margin-left: 15px;"></span>
+        </div>
+
         <!-- Full-screen preview modal -->
         <div id="previewModal" class="preview-modal" onclick="closePreview()">
             <div class="preview-content" onclick="event.stopPropagation()">
@@ -415,6 +421,9 @@
         <script>
             let groupsLoaded = false;
             let photoSelections = {}; // Track user selections by group_id
+            let currentPage = 0;
+            let hasMoreGroups = true;
+            let totalGroupsAvailable = 0;
 
             // Load stats immediately (working approach)
             console.log('Script starting...');
@@ -540,10 +549,22 @@
                         if (data.success) {
                             allGroups = data.groups; // Store for calculations
                             displayGroups(data.groups);
+                            totalGroupsAvailable = data.total_groups || data.groups.length;
+                            currentPage = 1; // We loaded page 1
+                            hasMoreGroups = data.has_more || false;
+                            
                             status.innerHTML = `✅ Analysis Complete • Found ${data.total_groups} groups`;
                             status.title = 'Photo analysis completed successfully';
                             btn.innerHTML = '✅ Analysis Complete';
                             groupsLoaded = true;
+                            
+                            // Show pagination controls if there are more groups
+                            if (hasMoreGroups) {
+                                const paginationControls = document.getElementById('paginationControls');
+                                const paginationStatus = document.getElementById('paginationStatus');
+                                paginationControls.style.display = 'block';
+                                paginationStatus.innerHTML = `Showing ${data.groups.length} of ${totalGroupsAvailable} groups`;
+                            }
                         } else {
                             status.innerHTML = `❌ Error: ${data.error}`;
                             status.title = '';
@@ -565,11 +586,71 @@
                     });
             }
 
-            function displayGroups(groups) {
+            function loadMoreGroups() {
+                if (!hasMoreGroups) return;
+                
+                const btn = document.getElementById('loadMoreBtn');
+                const status = document.getElementById('paginationStatus');
+                
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Loading...';
+                status.innerHTML = 'Loading more groups...';
+                
+                // Check for priority and limit parameters from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const priority = urlParams.get('priority');
+                const limit = urlParams.get('limit') || '10';
+                const nextPage = currentPage + 1;
+                
+                let apiUrl;
+                if (priority) {
+                    // Use priority-filtered API endpoint with pagination
+                    apiUrl = `/api/groups?priority=${priority}&limit=${limit}&page=${nextPage}`;
+                } else {
+                    // Use full analysis API endpoint with pagination
+                    apiUrl = `/api/groups?limit=${limit}&page=${nextPage}`;
+                }
+                
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Append new groups to existing ones
+                            allGroups = allGroups.concat(data.groups);
+                            displayGroups(data.groups, true); // true = append mode
+                            currentPage = nextPage;
+                            hasMoreGroups = data.has_more || false;
+                            
+                            const loadedCount = allGroups.length;
+                            status.innerHTML = `Showing ${loadedCount} of ${totalGroupsAvailable} groups`;
+                            
+                            if (hasMoreGroups) {
+                                btn.disabled = false;
+                                btn.innerHTML = '📄 Load More Groups';
+                            } else {
+                                btn.innerHTML = '✅ All Groups Loaded';
+                                btn.disabled = true;
+                            }
+                        } else {
+                            status.innerHTML = `❌ Error loading more groups: ${data.error}`;
+                            btn.disabled = false;
+                            btn.innerHTML = '📄 Load More Groups';
+                        }
+                    })
+                    .catch(error => {
+                        status.innerHTML = `❌ Failed to load more groups: ${error}`;
+                        btn.disabled = false;
+                        btn.innerHTML = '📄 Load More Groups';
+                    });
+            }
+
+            function displayGroups(groups, appendMode = false) {
                 const container = document.getElementById('groupsContainer');
                 
                 if (groups.length === 0) {
-                    container.innerHTML = '<div class="status">ℹ️ No duplicate photo groups found in sample</div>';
+                    if (!appendMode) {
+                        container.innerHTML = '<div class="status">ℹ️ No duplicate photo groups found in sample</div>';
+                    }
                     return;
                 }
                 
@@ -645,7 +726,13 @@
                     html += '</div></div>';
                 });
                 
-                container.innerHTML = html;
+                if (appendMode) {
+                    // Append new groups to existing content
+                    container.insertAdjacentHTML('beforeend', html);
+                } else {
+                    // Replace all content with new groups
+                    container.innerHTML = html;
+                }
                 updateSelectionSummary();
             }
 

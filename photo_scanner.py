@@ -6,13 +6,14 @@ Handles metadata extraction, time-based grouping, and similarity detection
 
 import osxphotos
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Set
 from datetime import datetime, timedelta
 import imagehash
 from PIL import Image
 import hashlib
 from collections import defaultdict
 import os
+import json
 import cv2
 import numpy as np
 
@@ -77,19 +78,36 @@ class PhotoScanner:
         db = self.get_photosdb()
         all_photos = db.photos(intrash=False, movies=not include_videos)
         
-        # Filter out photos already marked for deletion
+        # Load persistent tracking file
+        processed_uuids = self._load_processed_uuids()
+        
+        # Filter out photos already marked for deletion (both keyword and UUID tracking)
         photos = []
         marked_for_deletion_count = 0
+        persistent_tracking_count = 0
+        
         for photo in all_photos:
+            # Check keyword-based filtering (primary)
             if photo.keywords and "marked-for-deletion" in photo.keywords:
                 marked_for_deletion_count += 1
                 continue
+            
+            # Check persistent UUID tracking (backup)
+            if photo.uuid in processed_uuids:
+                persistent_tracking_count += 1
+                continue
+                
             photos.append(photo)
         
-        if marked_for_deletion_count > 0:
-            print(f"🔄 Excluded {marked_for_deletion_count} photos already marked for deletion")
+        total_excluded = marked_for_deletion_count + persistent_tracking_count
+        if total_excluded > 0:
+            print(f"🔄 Excluded {total_excluded} photos already marked for deletion")
+            if marked_for_deletion_count > 0:
+                print(f"   └─ {marked_for_deletion_count} by keyword")
+            if persistent_tracking_count > 0:
+                print(f"   └─ {persistent_tracking_count} by UUID tracking")
         
-        return photos, marked_for_deletion_count
+        return photos, total_excluded
     
     def extract_photo_metadata(self, photo) -> PhotoData:
         """Extract metadata from osxphotos Photo object."""
@@ -636,6 +654,45 @@ class PhotoScanner:
         
         print(f"✅ Visual similarity filtering complete: {len(groups)} groups → {len(refined_groups)} refined groups")
         return refined_groups
+
+    def _load_processed_uuids(self) -> Set[str]:
+        """Load UUIDs of photos that have been previously marked for deletion."""
+        tracking_file = os.path.expanduser("~/.photo_dedup_processed_uuids.json")
+        if os.path.exists(tracking_file):
+            try:
+                with open(tracking_file, 'r') as f:
+                    data = json.load(f)
+                    return set(data.get('processed_uuids', []))
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"⚠️ Warning: Could not load UUID tracking file: {e}")
+        return set()
+    
+    def _save_processed_uuids(self, uuids: List[str]):
+        """Save UUIDs of photos that have been marked for deletion."""
+        tracking_file = os.path.expanduser("~/.photo_dedup_processed_uuids.json")
+        
+        # Load existing UUIDs
+        existing_uuids = self._load_processed_uuids()
+        
+        # Add new UUIDs
+        all_uuids = existing_uuids.union(set(uuids))
+        
+        # Save back to file
+        try:
+            data = {
+                'processed_uuids': list(all_uuids),
+                'last_updated': datetime.now().isoformat()
+            }
+            with open(tracking_file, 'w') as f:
+                json.dump(data, f, indent=2)
+            print(f"💾 Saved {len(uuids)} new processed UUIDs to tracking file ({len(all_uuids)} total)")
+        except IOError as e:
+            print(f"⚠️ Warning: Could not save UUID tracking file: {e}")
+    
+    def add_processed_uuids(self, uuids: List[str]):
+        """Public method to add UUIDs to the processed list."""
+        if uuids:
+            self._save_processed_uuids(uuids)
 
 def main():
     """Test the photo scanner functionality."""

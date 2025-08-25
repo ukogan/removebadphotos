@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duplicate Groups - Photo Deduplication</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header Section */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        /* Analysis Summary */
+        .analysis-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        
+        .summary-label {
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        
+        .summary-card.savings {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+        
+        .summary-card.savings .summary-value,
+        .summary-card.savings .summary-label {
+            color: white;
+        }
+        
+        /* Navigation Controls */
+        .nav-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .view-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .sort-select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .progress-info {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        
+        .progress-info strong {
+            color: #2d3748;
+        }
+        
+        /* Duplicate Groups Container */
+        .groups-container {
+            margin-bottom: 30px;
+        }
+        
+        .group-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .group-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .group-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f7fafc;
+        }
+        
+        .group-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .group-id {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .group-savings {
+            background: #48bb78;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .group-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .group-photos {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f7fafc;
+            border: 3px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+        
+        .photo-item.recommended {
+            border-color: #48bb78;
+        }
+        
+        .photo-item.selected-for-deletion {
+            border-color: #f56565;
+        }
+        
+        .photo-thumbnail {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+        
+        .photo-info {
+            padding: 12px;
+            background: white;
+        }
+        
+        .photo-filename {
+            font-size: 12px;
+            color: #4a5568;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+        
+        .photo-details {
+            font-size: 11px;
+            color: #718096;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .photo-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d3748;
+        }
+        
+        .photo-badge.best {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .photo-badge.duplicate {
+            background: #ed8936;
+            color: white;
+        }
+        
+        /* Load More Section */
+        .load-more-section {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+            transform: translateY(-1px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .remaining-count {
+            color: #4a5568;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+        
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #4a5568;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #4a5568;
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h2 {
+            margin-bottom: 12px;
+            color: #2d3748;
+        }
+        
+        .btn-back {
+            margin-top: 20px;
+            display: inline-block;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 Duplicate Groups Found</h1>
+            <div class="subtitle">Review and manage duplicate photos in your library</div>
+        </div>
+        
+        <!-- Analysis Summary -->
+        <div class="analysis-summary" id="analysisSummary">
+            <div class="summary-card">
+                <div class="summary-value" id="totalGroups">0</div>
+                <div class="summary-label">Duplicate Groups</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="totalPhotos">0</div>
+                <div class="summary-label">Photos Analyzed</div>
+            </div>
+            <div class="summary-card savings">
+                <div class="summary-value" id="potentialSavings">0 GB</div>
+                <div class="summary-label">Potential Savings</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="analysisDuration">0s</div>
+                <div class="summary-label">Analysis Time</div>
+            </div>
+        </div>
+        
+        <!-- Navigation Controls -->
+        <div class="nav-controls">
+            <div class="view-controls">
+                <label for="sortSelect">Sort by:</label>
+                <select id="sortSelect" class="sort-select" onchange="changeSortOrder()">
+                    <option value="savings_desc">Largest Savings First</option>
+                    <option value="count_desc">Most Photos First</option>
+                    <option value="date_desc">Most Recent First</option>
+                    <option value="quality_desc">Best Quality First</option>
+                </select>
+            </div>
+            <div class="progress-info">
+                Showing groups <span id="groupRange">1-0</span> of <span id="totalCount">0</span>
+            </div>
+        </div>
+        
+        <!-- Duplicate Groups Container -->
+        <div id="duplicateGroups" class="groups-container">
+            <!-- Loading state -->
+            <div class="loading" id="loadingState">
+                <div class="spinner"></div>
+                <div>Loading duplicate groups...</div>
+            </div>
+        </div>
+        
+        <!-- Load More Section -->
+        <div class="load-more-section" id="loadMoreSection" style="display: none;">
+            <button id="loadMoreBtn" class="btn btn-primary" onclick="loadMoreDuplicates()">
+                <span id="loadMoreText">📥 Load More Duplicates</span>
+            </button>
+            <div class="remaining-count">
+                <span id="remainingCount">0</span> more groups available
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">🎉</div>
+            <h2>No Duplicate Groups Found</h2>
+            <p>Your filtered photos don't contain any duplicates, or they've already been processed.</p>
+            <a href="/filters" class="btn btn-primary btn-back">← Back to Filters</a>
+        </div>
+    </div>
+    
+    <script>
+        // Global state management
+        let currentPage = 1;
+        let cacheKey = null;
+        let totalGroups = 0;
+        let groupsLoaded = 0;
+        let isLoading = false;
+        
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInitialDuplicates();
+        });
+        
+        async function loadInitialDuplicates() {
+            console.log('🔍 Loading initial duplicate groups...');
+            
+            try {
+                showLoadingState();
+                
+                // TODO: Get filter criteria from URL params or session
+                const filterCriteria = {}; // Empty for MVP - will be enhanced in next iteration
+                
+                const response = await fetch('/api/analyze-duplicates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filters: filterCriteria,
+                        pagination: {
+                            page: 1,
+                            limit: 10,
+                            sort: 'savings_desc'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateAnalysisSummary(data.analysis);
+                    displayDuplicateGroups(data.results);
+                    
+                    cacheKey = data.cache_key;
+                    totalGroups = data.results.pagination.total_groups;
+                    groupsLoaded = data.results.groups.length;
+                    
+                    hideLoadingState();
+                    updateLoadMoreSection();
+                    
+                    console.log(`✅ Loaded ${groupsLoaded} of ${totalGroups} groups`);
+                    
+                } else {
+                    throw new Error(data.error || 'Failed to load duplicate groups');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading duplicates:', error);
+                showEmptyState('Error loading duplicate groups: ' + error.message);
+            }
+        }
+        
+        function updateAnalysisSummary(analysis) {
+            document.getElementById('totalGroups').textContent = analysis.total_groups_found.toLocaleString();
+            document.getElementById('totalPhotos').textContent = analysis.total_photos_analyzed.toLocaleString();
+            document.getElementById('potentialSavings').textContent = analysis.potential_savings_gb.toFixed(2) + ' GB';
+            document.getElementById('analysisDuration').textContent = analysis.analysis_duration_seconds + 's';
+        }
+        
+        function displayDuplicateGroups(results) {
+            const container = document.getElementById('duplicateGroups');
+            const groups = results.groups;
+            
+            if (groups.length === 0) {
+                showEmptyState();
+                return;
+            }
+            
+            let html = '';
+            groups.forEach((group, index) => {
+                html += createGroupHTML(group, groupsLoaded - groups.length + index + 1);
+            });
+            
+            if (currentPage === 1) {
+                container.innerHTML = html;
+            } else {
+                container.innerHTML += html;
+            }
+            
+            // Update progress display
+            document.getElementById('groupRange').textContent = `1-${groupsLoaded}`;
+            document.getElementById('totalCount').textContent = totalGroups.toLocaleString();
+        }
+        
+        function createGroupHTML(group, groupNumber) {
+            const photos = group.photos || [];
+            const impact = group.impact || {};
+            
+            let photosHTML = '';
+            photos.forEach((photo, index) => {
+                const isRecommended = photo.uuid === impact.best_photo_uuid;
+                const badgeText = isRecommended ? 'KEEP' : 'DUPLICATE';
+                const badgeClass = isRecommended ? 'best' : 'duplicate';
+                const photoClass = isRecommended ? 'recommended' : '';
+                
+                photosHTML += `
+                    <div class="photo-item ${photoClass}">
+                        <img src="/api/thumbnail/${photo.uuid}" 
+                             alt="${photo.filename || 'Photo'}" 
+                             class="photo-thumbnail"
+                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNGNUY1RjUiLz48cGF0aCBkPSJNMTAwIDc1QzEwNC40MTggNzUgMTA4IDcxLjQxOCAxMDggNjdDMTA4IDYyLjU4MiAxMDQuNDE4IDU5IDEwMCA1OUM5NS41ODIgNTkgOTIgNjIuNTgyIDkyIDY3QzkyIDcxLjQxOCA5NS41ODIgNzUgMTAwIDc1WiIgZmlsbD0iIzk5OTk5OSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='"
+                             onclick="togglePhotoSelection('${group.id}', '${photo.uuid}')">
+                        <div class="photo-badge ${badgeClass}">${badgeText}</div>
+                        <div class="photo-info">
+                            <div class="photo-filename">${photo.filename || 'Unknown'}</div>
+                            <div class="photo-details">
+                                <span>${(photo.file_size_bytes / 1024 / 1024).toFixed(1)} MB</span>
+                                <span>Quality: ${photo.quality_score || 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return `
+                <div class="group-card" data-group-id="${group.id}">
+                    <div class="group-header">
+                        <div class="group-title">
+                            <div class="group-id">Group ${groupNumber} • ${photos.length} photos</div>
+                            <div class="group-savings">Save ${(impact.total_savings_bytes / 1024 / 1024 || 0).toFixed(1)} MB</div>
+                        </div>
+                        <div class="group-meta">
+                            <span>📅 ${group.timestamp || 'Unknown date'}</span>
+                            <span>📷 ${group.camera_model || 'Unknown camera'}</span>
+                            <span>🎯 ${(group.similarity_score * 100 || 0).toFixed(0)}% similarity</span>
+                        </div>
+                    </div>
+                    <div class="group-photos">
+                        ${photosHTML}
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function loadMoreDuplicates() {
+            if (isLoading || !cacheKey) return;
+            
+            console.log(`📥 Loading more duplicates - page ${currentPage + 1}...`);
+            isLoading = true;
+            
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const loadMoreText = document.getElementById('loadMoreText');
+            
+            loadMoreBtn.disabled = true;
+            loadMoreText.innerHTML = '⏳ Loading...';
+            
+            try {
+                currentPage++;
+                
+                const response = await fetch(`/api/load-more-duplicates?cache_key=${cacheKey}&page=${currentPage}&limit=10`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const newGroups = data.results.groups;
+                    
+                    if (newGroups.length > 0) {
+                        displayDuplicateGroups(data.results);
+                        groupsLoaded += newGroups.length;
+                        updateLoadMoreSection();
+                        
+                        console.log(`✅ Loaded ${newGroups.length} more groups (${groupsLoaded}/${totalGroups} total)`);
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to load more groups');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading more duplicates:', error);
+                loadMoreText.innerHTML = '❌ Error loading more';
+                currentPage--; // Revert page increment
+            } finally {
+                isLoading = false;
+                loadMoreBtn.disabled = false;
+                
+                if (loadMoreText.innerHTML.includes('Error')) {
+                    setTimeout(() => {
+                        loadMoreText.innerHTML = '📥 Load More Duplicates';
+                    }, 2000);
+                } else {
+                    loadMoreText.innerHTML = '📥 Load More Duplicates';
+                }
+            }
+        }
+        
+        function updateLoadMoreSection() {
+            const loadMoreSection = document.getElementById('loadMoreSection');
+            const remainingCount = document.getElementById('remainingCount');
+            
+            const remaining = totalGroups - groupsLoaded;
+            
+            if (remaining > 0) {
+                loadMoreSection.style.display = 'block';
+                remainingCount.textContent = remaining.toLocaleString();
+            } else {
+                loadMoreSection.style.display = 'none';
+            }
+        }
+        
+        function changeSortOrder() {
+            const sortValue = document.getElementById('sortSelect').value;
+            console.log('🔄 Changing sort order to:', sortValue);
+            
+            // TODO: Implement sort change functionality
+            alert('Sort functionality will be implemented in next iteration');
+        }
+        
+        function togglePhotoSelection(groupId, photoUuid) {
+            console.log('🖱️ Photo selection toggle:', groupId, photoUuid);
+            
+            // TODO: Implement photo selection logic
+            alert('Photo selection will be implemented in next iteration');
+        }
+        
+        function showLoadingState() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('duplicateGroups').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+        }
+        
+        function hideLoadingState() {
+            document.getElementById('loadingState').style.display = 'none';
+        }
+        
+        function showEmptyState(message = null) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('duplicateGroups').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('loadMoreSection').style.display = 'none';
+            
+            if (message) {
+                document.querySelector('.empty-state h2').textContent = 'Error';
+                document.querySelector('.empty-state p').textContent = message;
+            }
+        }
+    </script>
+</body>
+</html>
