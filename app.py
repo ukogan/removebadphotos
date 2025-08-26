@@ -996,10 +996,30 @@ def legacy():
                 cards.forEach(card => {
                     const photoUuid = card.getAttribute('data-photo');
                     const isSelected = photoSelections[groupId].includes(photoUuid);
-                    // Update card classes based on selection state only
+                    
+                    // Update card classes based on selection state
                     card.className = 'photo-card';
                     if (isSelected) {
                         card.className += ' selected'; // Selected = DELETE target
+                    }
+                    
+                    // Update button appearance and text
+                    const button = card.querySelector('.photo-action-button');
+                    if (button) {
+                        // Update button classes
+                        button.className = `photo-action-button ${isSelected ? 'remove-mark' : 'mark-delete'}`;
+                        
+                        // Update button text
+                        button.textContent = isSelected ? 'Remove Mark' : 'Mark for Deletion';
+                        
+                        // Update button styling
+                        if (isSelected) {
+                            button.style.background = '#6b7280';
+                            button.style.borderColor = '#6b7280';
+                        } else {
+                            button.style.background = '#ef4444';
+                            button.style.borderColor = '#dc2626';
+                        }
                     }
                 });
             }
