@@ -298,50 +298,33 @@ def legacy():
             }
             
             .photo-card {
-                border: 2px solid #dee2e6;
-                border-radius: 8px;
-                padding: 16px;
-                margin: 8px;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 20px;
+                margin: 12px;
                 text-align: center;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                background-color: #f8f9fa;
+                transition: all 0.3s ease;
+                background-color: white;
                 position: relative;
-                opacity: 0.8;
-            }
-            
-            .photo-card:not(.selected)::after {
-                content: "🛡️ KEEP";
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                background: #28a745;
-                color: white;
-                padding: 6px 12px;
-                border-radius: 6px;
-                font-size: 0.8rem;
-                font-weight: bold;
-                z-index: 2;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             }
             
             .photo-card:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.12);
             }
             
             .photo-card.recommended {
                 border-color: #ffc107;
                 background-color: #fff9e6;
-                box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
-                position: relative;
+                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
             }
             
-            .photo-card.recommended::after {
+            .photo-card.recommended::before {
                 content: "⭐ RECOMMENDED";
                 position: absolute;
-                top: 8px;
-                left: 8px;
+                top: 12px;
+                left: 12px;
                 background: #ffc107;
                 color: #212529;
                 padding: 4px 8px;
@@ -349,42 +332,52 @@ def legacy():
                 font-size: 0.75rem;
                 font-weight: bold;
                 z-index: 2;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             
             .photo-card.selected {
-                border-color: #dc3545;
-                background-color: white;
-                box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+                border: 3px solid #ef4444;
+                background: linear-gradient(rgba(239, 68, 68, 0.03), rgba(239, 68, 68, 0.08));
+                box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+            }
+            
+            .photo-card.selected .photo-thumbnail {
+                opacity: 0.7;
                 position: relative;
-                opacity: 1;
-                transform: translateY(-1px);
             }
             
-            .photo-card.selected::before {
-                content: "❌ DELETE";
+            .photo-card.selected .photo-thumbnail::after {
+                content: "MARKED FOR DELETION";
                 position: absolute;
-                top: 8px;
-                right: 8px;
-                background: #dc3545;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(239, 68, 68, 0.9);
                 color: white;
-                padding: 6px 12px;
+                padding: 8px 16px;
                 border-radius: 6px;
-                font-size: 0.8rem;
-                font-weight: bold;
-                z-index: 2;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                font-weight: 600;
+                font-size: 0.9rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             }
             
-            .photo-card.selected::after {
-                content: "";
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(220, 53, 69, 0.15);
-                border-radius: 8px;
-                z-index: 1;
+            .photo-action-button {
+                transition: all 0.2s ease;
+            }
+            
+            .photo-action-button:hover {
+                transform: scale(1.02);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            
+            .photo-action-button.mark-delete:hover {
+                background: #dc2626 !important;
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+            }
+            
+            .photo-action-button.remove-mark:hover {
+                background: #4b5563 !important;
+                box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3) !important;
             }
             
             .photo-thumbnail {
@@ -888,9 +881,9 @@ def legacy():
                                     <div>💾 ${fileSize}</div>
                                     <div>⭐ ${photo.quality_score ? photo.quality_score.toFixed(1) : '0.0'} ${photo.quality_method === 'favorite' ? '(favorite)' : photo.quality_method === 'quality' ? '(quality)' : photo.quality_method === 'inferred quality' ? '(inferred)' : ''}</div>
                                 </div>
-                                <div class="photo-selection-area" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; background: ${isSelected ? 'rgba(220,53,69,0.8)' : 'rgba(40,167,69,0.8)'}; border-radius: 50%; margin: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: white; font-weight: bold;">
-                                    ${isSelected ? '❌' : '🛡️'}
-                                </div>
+                                <button class="photo-action-button ${isSelected ? 'remove-mark' : 'mark-delete'}" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="width: 100%; height: 50px; border-radius: 8px; border: 2px solid ${isSelected ? '#6b7280' : '#dc2626'}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; background: ${isSelected ? '#6b7280' : '#ef4444'}; color: white; margin-top: 8px;">
+                                    ${isSelected ? 'Remove Mark' : 'Mark for Deletion'}
+                                </button>
                             </div>
                         `;
                     });
@@ -965,9 +958,9 @@ def legacy():
                                     <div>💾 ${fileSize}</div>
                                     <div>⭐ ${photo.quality_score ? photo.quality_score.toFixed(1) : '0.0'} ${photo.quality_method === 'favorite' ? '(favorite)' : photo.quality_method === 'quality' ? '(quality)' : photo.quality_method === 'inferred quality' ? '(inferred)' : ''}</div>
                                 </div>
-                                <div class="photo-selection-area" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; background: ${isSelected ? 'rgba(220,53,69,0.8)' : 'rgba(40,167,69,0.8)'}; border-radius: 50%; margin: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: white; font-weight: bold;">
-                                    ${isSelected ? '❌' : '🛡️'}
-                                </div>
+                                <button class="photo-action-button ${isSelected ? 'remove-mark' : 'mark-delete'}" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="width: 100%; height: 50px; border-radius: 8px; border: 2px solid ${isSelected ? '#6b7280' : '#dc2626'}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; background: ${isSelected ? '#6b7280' : '#ef4444'}; color: white; margin-top: 8px;">
+                                    ${isSelected ? 'Remove Mark' : 'Mark for Deletion'}
+                                </button>
                             </div>
                         `;
                     });
