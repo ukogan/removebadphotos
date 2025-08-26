@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UX Mockup - Photo Dedup Button Improvements</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #f0f2f5 0%, #e8edf2 100%);
+            padding: 40px;
+            line-height: 1.6;
+        }
+
+        .mockup-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .mockup-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .mockup-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .mockup-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .comparison-section {
+            padding: 40px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .before-after {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .before, .after {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 30px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .before {
+            border-color: #fed7d7;
+            background: #fef5f5;
+        }
+
+        .after {
+            border-color: #c6f6d5;
+            background: #f0fff4;
+        }
+
+        .comparison-label {
+            font-weight: 600;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .before .comparison-label {
+            color: #c53030;
+        }
+
+        .after .comparison-label {
+            color: #38a169;
+        }
+
+        /* OLD BUTTON STYLES (Current) */
+        .old-photo-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .old-photo-placeholder {
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(45deg, #edf2f7, #e2e8f0);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            color: #a0aec0;
+            font-weight: 500;
+        }
+
+        .old-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .old-button {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid #cbd5e0;
+            background: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .old-button:hover {
+            transform: scale(1.1);
+        }
+
+        /* NEW BUTTON STYLES (Proposed) */
+        .new-photo-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .new-photo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .new-photo-card.delete-marked {
+            border: 3px solid #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .new-photo-card.delete-marked .new-photo-placeholder {
+            opacity: 0.7;
+            position: relative;
+        }
+
+        .new-photo-card.delete-marked .new-photo-placeholder::after {
+            content: "MARKED FOR DELETION";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .new-photo-placeholder {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(45deg, #edf2f7, #e2e8f0);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            color: #a0aec0;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .preview-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .new-photo-card:hover .preview-icon {
+            opacity: 1;
+        }
+
+        .photo-filename {
+            font-size: 0.9rem;
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .single-action-button {
+            width: 100%;
+            height: 50px;
+            border-radius: 8px;
+            border: 2px solid #dc2626;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #ef4444;
+            color: white;
+        }
+
+        .single-action-button:hover {
+            background: #dc2626;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .single-action-button.unmark {
+            background: #6b7280;
+            border-color: #4b5563;
+        }
+
+        .single-action-button.unmark:hover {
+            background: #4b5563;
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+
+        /* CONFIRMATION MODAL STYLES */
+        .modal-demo {
+            background: rgba(0,0,0,0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h3 {
+            font-size: 1.4rem;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #4a5568;
+            margin-bottom: 25px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-button {
+            flex: 1;
+            height: 44px;
+            border-radius: 8px;
+            border: 2px solid;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-button.cancel {
+            background: white;
+            border-color: #cbd5e0;
+            color: #4a5568;
+        }
+
+        .modal-button.cancel:hover {
+            background: #f7fafc;
+        }
+
+        .modal-button.confirm {
+            background: #ef4444;
+            border-color: #dc2626;
+            color: white;
+        }
+
+        .modal-button.confirm:hover {
+            background: #dc2626;
+        }
+
+        /* TOAST NOTIFICATION */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        /* FILTER MOCKUP */
+        .filters-mockup {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 40px;
+        }
+
+        .filters-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .stats-overview {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .active-filters {
+            background: #e0e7ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-tag {
+            background: #3b82f6;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .quick-filters {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .filter-btn.active {
+            background: #3b82f6;
+            border-color: #2563eb;
+            color: white;
+        }
+
+        .results-preview {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        /* macOS Desktop Only - No mobile responsive styles needed */
+
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-header">
+            <h1>🎨 UX Mockup: Photo Dedup Improvements</h1>
+            <p>Visual demonstration of proposed button and interaction enhancements</p>
+        </div>
+
+        <div class="comparison-section">
+            <h2 class="section-title">Photo Card Button Comparison</h2>
+            
+            <div class="before-after">
+                <!-- BEFORE (Current) -->
+                <div class="before">
+                    <div class="comparison-label">❌ Current Design (Problems)</div>
+                    
+                    <div class="old-photo-card">
+                        <div class="old-photo-placeholder">
+                            📸 Photo Preview
+                        </div>
+                        <div class="old-buttons">
+                            <span style="font-size: 0.8rem; color: #718096;">IMG_1234.HEIC</span>
+                            <div class="old-button" title="Keep">🛡️</div>
+                            <div class="old-button" title="Delete">❌</div>
+                        </div>
+                    </div>
+                    
+                    <p style="color: #c53030; font-size: 0.9rem;">
+                        ⚠️ Issues:<br>
+                        • Buttons too small (30px)<br>
+                        • Unclear icons (🛡️)<br>
+                        • Weak visual feedback<br>
+                        • Hard to click on mobile
+                    </p>
+                </div>
+
+                <!-- AFTER (Proposed) -->
+                <div class="after">
+                    <div class="comparison-label">✅ Proposed Design (Solution)</div>
+                    
+                    <div class="new-photo-card">
+                        <div class="new-photo-placeholder">
+                            📸 Photo Preview (Keep Default)
+                            <div class="preview-icon">🔍</div>
+                        </div>
+                        <div class="photo-filename">IMG_1234.HEIC</div>
+                        <button class="single-action-button">Mark for Deletion</button>
+                    </div>
+                    
+                    <p style="color: #38a169; font-size: 0.9rem;">
+                        ✅ Improvements:<br>
+                        • Large button (50px height)<br>
+                        • Single clear action<br>
+                        • Keep is default state<br>
+                        • Preview icon on hover<br>
+                        • Clear workflow
+                    </p>
+                </div>
+            </div>
+
+            <!-- SELECTION STATES DEMO -->
+            <h2 class="section-title">Visual Selection States</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px;">
+                
+                <!-- Keep (Default) State -->
+                <div class="new-photo-card">
+                    <div class="new-photo-placeholder">
+                        📸 Keep (Default)
+                    </div>
+                    <div class="photo-filename">IMG_2345.HEIC</div>
+                    <button class="single-action-button">Mark for Deletion</button>
+                </div>
+
+                <!-- Delete Marked -->
+                <div class="new-photo-card delete-marked">
+                    <div class="new-photo-placeholder">
+                        📸 Will be Deleted
+                    </div>
+                    <div class="photo-filename">IMG_4567.HEIC</div>
+                    <button class="single-action-button unmark">Remove Mark</button>
+                </div>
+            </div>
+
+            <!-- CONFIRMATION MODAL DEMO -->
+            <h2 class="section-title">Simplified Confirmation Modal</h2>
+            
+            <div style="background: #f7fafc; border-radius: 8px; padding: 20px; text-align: center;">
+                <div class="modal-content" style="position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.15);">
+                    <h3>Mark for Manual Deletion?</h3>
+                    <p>Mark 5 photos for manual deletion?</p>
+                    <div class="modal-buttons">
+                        <button class="modal-button cancel">Cancel</button>
+                        <button class="modal-button confirm">Mark</button>
+                    </div>
+                </div>
+                <p style="margin-top: 15px; color: #4a5568; font-size: 0.9rem;">
+                    <strong>Before:</strong> "Delete 5 photos? This can't be undone." (inaccurate)<br>
+                    <strong>After:</strong> Accurate workflow description
+                </p>
+            </div>
+
+            <!-- TOAST NOTIFICATION DEMO -->
+            <h2 class="section-title">Toast Notifications</h2>
+            
+            <div style="background: #f7fafc; border-radius: 8px; padding: 20px; position: relative; height: 120px;">
+                <div class="toast" style="width: auto; max-width: 90%;">
+                    ✅ 5 photos marked for deletion and added to <a href="#" style="color: #bef6ff; text-decoration: underline;">this Photo Album</a> for your final review • 67 MB freed
+                </div>
+                <p style="margin-top: 80px; color: #4a5568; font-size: 0.9rem; text-align: center;">
+                    Clear next steps with actionable link to photo album
+                </p>
+            </div>
+
+            <!-- FILTERS INTERFACE MOCKUP -->
+            <div class="filters-mockup">
+                <div class="filters-header">
+                    <h2 class="section-title">Enhanced Filters Interface</h2>
+                </div>
+
+                <!-- Stats Overview -->
+                <div class="stats-overview">
+                    <div>📸 <strong>14,060</strong> Photos</div>
+                    <div>💾 <strong>5.2GB</strong> Total</div>  
+                    <div>🗑️ <strong>1.8GB</strong> Potential Savings</div>
+                </div>
+
+                <!-- Active Filters -->
+                <div class="active-filters">
+                    <span>🎯 Active Filters:</span>
+                    <span class="filter-tag">2024</span>
+                    <span class="filter-tag">P1-P2</span>
+                    <span class="filter-tag">HEIC+JPG</span>
+                    <button style="background: none; border: none; color: #3b82f6; font-weight: 500; cursor: pointer;">Clear All ×</button>
+                </div>
+
+                <!-- Quick Filters -->
+                <div class="quick-filters">
+                    <div class="filter-group">
+                        <label>🗓️ Year</label>
+                        <div class="filter-buttons">
+                            <div class="filter-btn">2025</div>
+                            <div class="filter-btn active">2024</div>
+                            <div class="filter-btn">2023</div>
+                            <div class="filter-btn">All Years</div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>🎯 Priority (duplicate likelihood)</label>
+                        <div class="filter-buttons">
+                            <div class="filter-btn active">P1 High</div>
+                            <div class="filter-btn active">P2 Medium</div>
+                            <div class="filter-btn">P3 Low</div>
+                            <div class="filter-btn">Any</div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>📱 File Types</label>
+                        <div class="filter-buttons">
+                            <div class="filter-btn active">HEIC</div>
+                            <div class="filter-btn active">JPG</div>
+                            <div class="filter-btn">PNG</div>
+                            <div class="filter-btn">All Types</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Preview -->
+                <div class="results-preview">
+                    <strong>📷 438 photos match your filters</strong><br>
+                    💾 1.2GB potential savings
+                </div>
+            </div>
+
+            <!-- IMPLEMENTATION NOTES -->
+            <div style="background: #fef5e7; border: 1px solid #f6d55c; border-radius: 8px; padding: 20px; margin-top: 40px;">
+                <h3 style="color: #92400e; margin-bottom: 10px;">🛠️ Implementation Notes</h3>
+                <ul style="color: #92400e; padding-left: 20px;">
+                    <li><strong>Button sizing:</strong> Minimum 44px height for accessibility</li>
+                    <li><strong>Color system:</strong> Green (#10b981) for keep, Red (#ef4444) for delete</li>
+                    <li><strong>Hover states:</strong> Scale transforms and shadow effects</li>
+                    <li><strong>Keyboard support:</strong> K/D keys, tab navigation, enter/space</li>
+                    <li><strong>Mobile responsive:</strong> Larger touch targets, vertical button stacking</li>
+                    <li><strong>Toast timing:</strong> 2-4 seconds auto-dismiss based on message length</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple demo interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Single action button demo
+            document.querySelectorAll('.single-action-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const card = this.closest('.new-photo-card');
+                    
+                    if (card.classList.contains('delete-marked')) {
+                        // Unmark for deletion
+                        card.classList.remove('delete-marked');
+                        this.textContent = 'Mark for Deletion';
+                        this.classList.remove('unmark');
+                    } else {
+                        // Mark for deletion
+                        card.classList.add('delete-marked');
+                        this.textContent = 'Remove Mark';
+                        this.classList.add('unmark');
+                    }
+                });
+            });
+
+            // Filter button demo
+            document.querySelectorAll('.filter-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const group = this.closest('.filter-group');
+                    if (group) {
+                        group.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    }
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
