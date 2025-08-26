@@ -815,24 +815,7 @@
                 </div>
             </div>
             
-            <div class="analyze-selected-section" id="analyze-selected-section" style="display: none;">
-                <div class="analyze-selected-info">
-                    <h3>🎯 Ready for Analysis</h3>
-                    <div id="selection-summary">
-                        <span id="selected-clusters-count">0</span> clusters selected 
-                        (<span id="selected-photos-count">0</span> photos)
-                    </div>
-                    <p>Analyze your filtered photos for duplicates and get results immediately.</p>
-                </div>
-                <div class="analyze-selected-actions">
-                    <button class="btn btn-success btn-large" onclick="analyzeForDuplicates()" id="analyzeForDuplicatesBtn">
-                        🔍 Analyze for Duplicates
-                    </button>
-                    <button class="btn btn-outline" onclick="clearAllFilters()">
-                        🗑️ Clear Filters
-                    </button>
-                </div>
-            </div>
+            <!-- Analyze section removed - filters now redirect directly to analysis -->
             
             <!-- Analysis Progress Section -->
             <div id="analysisProgress" class="progress-container" style="display: none;">
@@ -1045,32 +1028,57 @@
             }
         }
         
+        // Apply filters - streamlined workflow: save session and redirect  
         async function applyFilters() {
-            const resultsContent = document.getElementById('results-content');
-            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Applying filters...</div>';
+            console.log('🔍 Applying filters and redirecting to analysis:', currentFilters);
+            
+            // Disable button and show loading
+            const applyBtn = document.querySelector('button[onclick="applyFilters()"]');
+            const originalText = applyBtn.innerHTML;
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '⏳ Saving Filters...';
             
             try {
-                // Build query string
-                const params = new URLSearchParams();
-                if (currentFilters.year) params.append('year', currentFilters.year);
-                if (currentFilters.min_size_mb > 0) params.append('min_size_mb', currentFilters.min_size_mb);
-                if (currentFilters.max_size_mb < 100) params.append('max_size_mb', currentFilters.max_size_mb);
-                if (currentFilters.priority_levels) params.append('priority_levels', currentFilters.priority_levels.join(','));
-                if (currentFilters.file_types) params.append('file_types', currentFilters.file_types.join(','));
+                // Save filter session to backend
+                const filterSession = {
+                    filters: {
+                        year: currentFilters.year || null,
+                        min_size_mb: currentFilters.min_size_mb || null,
+                        max_size_mb: currentFilters.max_size_mb || null,
+                        priority_levels: currentFilters.priority_levels || null,
+                        file_types: currentFilters.file_types || null
+                    },
+                    timestamp: new Date().toISOString()
+                };
                 
-                console.log('🔍 Applying filters:', currentFilters);
+                const response = await fetch('/api/save-filter-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(filterSession)
+                });
                 
-                const response = await fetch(`/api/filter-clusters?${params}`);
                 const data = await response.json();
                 
                 if (data.success) {
-                    displayResults(data);
+                    console.log('✅ Filter session saved, redirecting to analysis...');
+                    // Redirect directly to legacy interface which will use filtered results
+                    window.location.href = '/legacy';
                 } else {
-                    resultsContent.innerHTML = `<div class="loading">❌ Error: ${data.error}</div>`;
+                    throw new Error(data.error || 'Failed to save filter session');
                 }
+                
             } catch (error) {
-                console.error('Error applying filters:', error);
-                resultsContent.innerHTML = '<div class="loading">❌ Network error occurred</div>';
+                console.error('❌ Error saving filter session:', error);
+                applyBtn.disabled = false;
+                applyBtn.innerHTML = originalText;
+                
+                // Show error message
+                const previewDiv = document.getElementById('filter-preview');
+                if (previewDiv) {
+                    previewDiv.innerHTML = '<div class="loading-distributions">❌ Failed to save filters. Please try again.</div>';
+                }
             }
         }
         
