@@ -850,36 +850,40 @@
             </div>
         </div>
         
-        <div class="results-section">
-            <h2>📊 Filter Results</h2>
-            <div id="results-content">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Click "Apply Filters" to see results
-                </div>
-            </div>
-        </div>
+        <!-- Results section removed - filters now redirect directly to analysis -->
     </div>
     
     <script>
         let libraryStats = null;
         let currentFilters = {};
         
-        // Load initial library stats
+        // Load initial library stats and initialize lazy loader cache
         async function loadLibraryStats() {
             try {
-                const response = await fetch('/api/library-stats');
+                // Use heatmap-data endpoint which initializes lazy loader cache
+                const response = await fetch('/api/heatmap-data');
                 const data = await response.json();
                 
                 if (data.success) {
-                    libraryStats = data.stats;
+                    libraryStats = data.library_stats;
                     
                     // Update stats display
                     document.getElementById('total-photos').textContent = libraryStats.total_photos.toLocaleString();
                     
-                    console.log('📊 Library stats loaded:', libraryStats);
+                    console.log('📊 Library stats loaded and lazy loader cache initialized:', libraryStats);
+                    
+                    // Now that cache is initialized, load filter distributions
+                    await loadDistributions();
                 } else {
                     console.error('Failed to load library stats:', data.error);
+                    // Fallback to basic library stats
+                    const fallbackResponse = await fetch('/api/library-stats');
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData.success) {
+                        libraryStats = fallbackData.stats;
+                        document.getElementById('total-photos').textContent = libraryStats.total_photos.toLocaleString();
+                        console.log('📊 Using fallback library stats:', libraryStats);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading library stats:', error);

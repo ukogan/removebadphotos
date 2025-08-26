@@ -46,6 +46,8 @@ class PhotoData:
     original_filename: Optional[str] = None
     perceptual_hash: Optional[str] = None
     quality_score: float = 0.0
+    quality_method: str = "unknown"  # "favorite", "quality", "inferred quality", "unknown"
+    is_favorite: bool = False
     analyzed: bool = False
 
 @dataclass
@@ -168,6 +170,9 @@ class PhotoScanner:
             # Calculate organization score
             org_score = self.calculate_organization_score(albums, folder_names, keywords, path)
             
+            # Check if photo is marked as favorite
+            is_favorite = getattr(photo, 'favorite', False)
+            
             return PhotoData(
                 uuid=uuid,
                 path=path,
@@ -183,7 +188,8 @@ class PhotoScanner:
                 albums=albums,
                 folder_names=folder_names,
                 keywords=keywords,
-                organization_score=org_score
+                organization_score=org_score,
+                is_favorite=is_favorite
             )
             
         except Exception as e:
@@ -244,9 +250,13 @@ class PhotoScanner:
         
         return min(score, 100.0)  # Cap at 100
     
-    def analyze_image_quality(self, image_path: str) -> float:
-        """Analyze image quality using multiple metrics. Returns score 0-100."""
+    def analyze_image_quality(self, image_path: str, photo_data: PhotoData = None) -> tuple[float, str]:
+        """Analyze image quality using multiple metrics. Returns (score, method)."""
         try:
+            # Check for favorite first - favorites get max score
+            if photo_data and photo_data.is_favorite:
+                return 100.0, "favorite"
+            
             # Load image with OpenCV
             img = cv2.imread(image_path)
             if img is None:
@@ -255,7 +265,7 @@ class PhotoScanner:
                     img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             
             if img is None:
-                return 0.0
+                return 0.0, "unknown"
             
             # Convert to grayscale for analysis
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -287,11 +297,11 @@ class PhotoScanner:
                 noise_score * 0.2            # 20%
             ) * 100
             
-            return min(max(quality_score, 0.0), 100.0)  # Clamp to 0-100
+            return min(max(quality_score, 0.0), 100.0), "quality"
             
         except Exception as e:
             print(f"Error analyzing image quality for {image_path}: {e}")
-            return 0.0
+            return 0.0, "unknown"
     
     def scan_photos(self, limit: Optional[int] = None, prioritize_accessible: bool = True) -> List[PhotoData]:
         """Scan Photos library and extract metadata for all photos."""
@@ -461,8 +471,12 @@ class PhotoScanner:
             print(f"Error calculating similarity between hashes {hash1} and {hash2}: {e}")
             return 0.0
     
-    def analyze_photo_quality(self, photo_data: PhotoData) -> float:
+    def analyze_photo_quality(self, photo_data: PhotoData) -> tuple[float, str]:
         """Enhanced quality assessment including organization metadata."""
+        # Check for favorite first - favorites get max score
+        if photo_data.is_favorite:
+            return 100.0, "favorite"
+        
         quality_score = 0.0
         
         # Resolution score (0-30 points) - reduced to make room for organization
@@ -501,7 +515,7 @@ class PhotoScanner:
             quality_score += (org_score / 100.0) * 25
             print(f"🗂️ {photo_data.filename} organization bonus: +{(org_score / 100.0) * 25:.1f} pts (albums: {len(photo_data.albums or [])}, folders: {len(photo_data.folder_names or [])})")
         
-        return min(quality_score, 100.0)  # Cap at 100
+        return min(quality_score, 100.0), "inferred quality"  # Cap at 100
     
     def enhanced_grouping_with_similarity(self, groups: List[PhotoGroup], progress_callback=None) -> List[PhotoGroup]:
         """Enhance groups with perceptual hash similarity analysis."""
@@ -535,13 +549,13 @@ class PhotoScanner:
                     # Try image-based quality analysis first, fallback to metadata-based
                     if photo.path and os.path.exists(photo.path):
                         print(f"🔍 Analyzing image quality for {photo.filename}...")
-                        photo.quality_score = self.analyze_image_quality(photo.path)
+                        photo.quality_score, photo.quality_method = self.analyze_image_quality(photo.path, photo)
                     else:
                         # Fallback to metadata-based quality analysis
-                        photo.quality_score = self.analyze_photo_quality(photo)
+                        photo.quality_score, photo.quality_method = self.analyze_photo_quality(photo)
                     
                     photo.analyzed = True
-                    print(f"📊 Quality score for {photo.filename}: {photo.quality_score:.1f}")
+                    print(f"📊 Quality score for {photo.filename}: {photo.quality_score:.1f} ({photo.quality_method})")
             
             # Re-evaluate recommendation based on quality scores
             photos_with_quality = [p for p in group.photos if p.quality_score > 0]
