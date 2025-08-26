@@ -2473,7 +2473,7 @@ def api_groups():
                                 'uuid': photo['uuid'],
                                 'filename': photo['filename'],
                                 'original_filename': photo.get('original_filename'),
-                                'timestamp': photo.get('date_taken'),
+                                'timestamp': photo.get('timestamp'),
                                 'camera_model': photo.get('camera_model', 'Unknown'),
                                 'file_size': photo.get('file_size_bytes', 0),
                                 'width': 0,  # Not available in unified format
@@ -2517,6 +2517,123 @@ def api_groups():
                     'cache_key': latest_cache_key,
                     'message': f'Showing {len(paginated_groups)} groups from unified analysis (page {page})'
                 })
+        
+        # NEW: Check for streamlined filter criteria workflow  
+        filter_criteria_session = session.get('filter_criteria')
+        if filter_criteria_session and filter_criteria_session.get('type') == 'criteria_only':
+            print(f"🎯 STREAMLINED WORKFLOW: Found saved filter criteria: {filter_criteria_session.get('filters', {})}")
+            
+            # We have filter criteria but no processed results yet
+            # This means the user came from /filters -> Apply Filters -> /legacy
+            # We need to process their filters now
+            
+            try:
+                # Use lazy loader to get filtered clusters based on saved criteria
+                filters = filter_criteria_session.get('filters', {})
+                
+                # Ensure lazy loader cache is available (should be initialized by heatmap-data call)
+                if not lazy_loader._cluster_cache or not lazy_loader._metadata_cache:
+                    print("⚠️ Lazy loader cache not initialized, initializing now...")
+                    stats, clusters = lazy_loader.get_library_metadata_fast()
+                
+                # Apply filters using lazy loader's filtering system
+                filtered_clusters = lazy_loader.load_filtered_clusters(filters)
+                print(f"📊 After applying filters: {len(filtered_clusters)} clusters remain")
+                
+                if not filtered_clusters:
+                    return jsonify({
+                        'success': True,
+                        'groups': [],
+                        'total_groups': 0,
+                        'mode': 'criteria_no_results',
+                        'message': 'No photos match the selected criteria'
+                    })
+                
+                # Load and analyze photos from the top clusters (limit to reasonable number)
+                max_clusters = min(limit * 2, len(filtered_clusters))  # Load 2x requested limit for better selection
+                all_groups = []
+                
+                for cluster in filtered_clusters[:max_clusters]:
+                    try:
+                        # Analyze this cluster to get photo groups
+                        cluster_groups = lazy_loader.analyze_cluster_photos(cluster.cluster_id)
+                        all_groups.extend(cluster_groups)
+                    except Exception as e:
+                        print(f"⚠️ Error analyzing cluster {cluster.cluster_id}: {e}")
+                        continue
+                
+                # Sort groups by potential savings (prioritize most impactful duplicates)
+                final_groups = sorted(all_groups, key=lambda g: sum(p.file_size for p in g.photos), reverse=True)
+                
+                # Convert to API format
+                groups_data = []
+                for i, group in enumerate(final_groups[:limit]):
+                    # Find recommended photo by UUID (groups have built-in recommendations)
+                    recommended_photo = None
+                    for photo in group.photos:
+                        if photo.uuid == group.recommended_photo_uuid:
+                            recommended_photo = photo
+                            break
+                    
+                    # Fallback if UUID not found - use highest quality photo  
+                    if not recommended_photo and group.photos:
+                        recommended_photo = max(group.photos, key=lambda p: getattr(p, 'quality_score', 0.0))
+                    
+                    group_data = {
+                        'group_id': f'streamlined_{i}',
+                        'photos': [
+                            {
+                                'uuid': photo.uuid,
+                                'filename': photo.filename,
+                                'original_filename': photo.original_filename,
+                                'timestamp': photo.timestamp.isoformat() if photo.timestamp else None,
+                                'camera_model': photo.camera_model,
+                                'file_size': photo.file_size,
+                                'width': photo.width,
+                                'height': photo.height,
+                                'format': photo.format,
+                                'quality_score': photo.quality_score,
+                                'quality_method': photo.quality_method,
+                                'organization_score': photo.organization_score,
+                                'albums': photo.albums,
+                                'folder_names': photo.folder_names,
+                                'keywords': photo.keywords,
+                                'recommended': (photo.uuid == recommended_photo.uuid) if recommended_photo else False
+                            }
+                            for photo in group.photos
+                        ],
+                        'time_window_start': group.time_window_start.isoformat() if group.time_window_start else None,
+                        'time_window_end': group.time_window_end.isoformat() if group.time_window_end else None,
+                        'camera_model': group.camera_model,
+                        'total_size_bytes': sum(photo.file_size for photo in group.photos),
+                        'potential_savings_bytes': sum(photo.file_size for photo in group.photos if photo.uuid != (recommended_photo.uuid if recommended_photo else None)),
+                        'recommended_photo_uuid': recommended_photo.uuid if recommended_photo else None
+                    }
+                    groups_data.append(group_data)
+                
+                print(f"📊 Generated {len(groups_data)} groups from streamlined workflow")
+                
+                return jsonify({
+                    'success': True,
+                    'groups': groups_data,
+                    'total_groups': len(final_groups),
+                    'current_page': page,
+                    'total_pages': (len(final_groups) + limit - 1) // limit,
+                    'has_next': limit < len(final_groups),
+                    'has_previous': page > 1,
+                    'mode': 'streamlined_criteria',
+                    'filter_criteria': filters,
+                    'source_photos': sum(len(cluster.photo_uuids) for cluster in filtered_clusters), 
+                    'message': f'Showing {len(groups_data)} groups from {len(filtered_clusters)} filtered clusters'
+                })
+                
+            except Exception as e:
+                print(f"❌ Error processing streamlined filter criteria: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error processing filter criteria: {str(e)}',
+                    'mode': 'streamlined_error'
+                }), 500
         
         # EXISTING: Check if we have a filtered session (the main workflow)
         filter_session = session.get('filter_session')
@@ -3373,7 +3490,6 @@ def api_create_album():
         
         if not album_name:
             # Generate default album name with timestamp
-            from datetime import datetime
             timestamp = datetime.now().strftime("%b-%d at %H:%M")
             album_name = f"Marked for Deletion - {timestamp}"
         
@@ -3844,15 +3960,50 @@ def api_filter_distributions():
             priority_distribution[priority]['total_savings_bytes'] += cluster.potential_savings_bytes
             priority_distribution[priority]['total_size_bytes'] += cluster.total_size_bytes
         
-        # Size distribution (histogram data)
-        size_histogram = {}
+        # Size distribution (quintile-based histogram data)
+        # Get all file sizes and sort them to create quintiles
+        file_sizes_mb = []
         for photo in metadata:
             size_mb = photo.file_size / (1024 * 1024) if photo.file_size else 0
-            # Create 10MB buckets
-            bucket = int(size_mb // 10) * 10
-            if bucket > 100:
-                bucket = 100  # Cap at 100+ MB bucket
-            size_histogram[bucket] = size_histogram.get(bucket, 0) + 1
+            file_sizes_mb.append(size_mb)
+        
+        file_sizes_mb.sort()
+        total_photos = len(file_sizes_mb)
+        
+        # Calculate quintile thresholds (5 equal-photo-count bins)
+        size_histogram = {}
+        if total_photos > 0:
+            quintile_size = total_photos // 5
+            quintiles = []
+            
+            for i in range(5):
+                start_idx = i * quintile_size
+                end_idx = (i + 1) * quintile_size if i < 4 else total_photos  # Last bin gets remainder
+                
+                if start_idx < total_photos:
+                    min_size = file_sizes_mb[start_idx]
+                    max_size = file_sizes_mb[end_idx - 1] if end_idx > start_idx else min_size
+                    count = end_idx - start_idx
+                    
+                    # Create descriptive bin labels
+                    if min_size == max_size:
+                        bin_label = f"{min_size:.1f}MB"
+                    else:
+                        bin_label = f"{min_size:.1f}-{max_size:.1f}MB"
+                    
+                    quintiles.append({
+                        'label': bin_label,
+                        'min_size': min_size,
+                        'max_size': max_size,
+                        'count': count,
+                        'bin_index': i
+                    })
+                    
+                    # Use bin index as key for histogram (0-4)
+                    size_histogram[i] = count
+        
+        # Store quintile metadata for frontend use
+        quintile_metadata = quintiles if total_photos > 0 else []
         
         # Calculate smart recommendations
         high_value_priorities = ['P1', 'P2']
@@ -3885,7 +4036,8 @@ def api_filter_distributions():
                 'years': dict(sorted(year_distribution.items(), reverse=True)),
                 'file_types': dict(sorted(file_type_distribution.items(), key=lambda x: x[1], reverse=True)),
                 'priorities': dict(sorted(priority_distribution.items())),
-                'size_histogram': dict(sorted(size_histogram.items()))
+                'size_histogram': dict(sorted(size_histogram.items())),
+                'size_quintiles': quintile_metadata  # New quintile metadata for frontend
             },
             'smart_recommendation': smart_recommendation,
             'totals': {
@@ -3907,6 +4059,39 @@ def api_filter_distributions():
         return jsonify({
             'success': False,
             'error': error_msg
+        }), 500
+
+@app.route('/api/save-filter-criteria', methods=['POST'])  
+def api_save_filter_criteria():
+    """Save just filter criteria to session for streamlined workflow."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        filters = data.get('filters', {})
+        
+        # Save simple filter criteria to session
+        session['filter_criteria'] = {
+            'filters': filters,
+            'timestamp': datetime.now().isoformat(),
+            'type': 'criteria_only'  # Distinguish from full cluster sessions
+        }
+        
+        print(f"💾 Saved filter criteria to session: {filters}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Filter criteria saved successfully',
+            'filters_saved': filters
+        })
+        
+    except Exception as e:
+        print(f"❌ Error saving filter criteria: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
 @app.route('/api/save-filter-session', methods=['POST'])
@@ -4097,7 +4282,7 @@ def sort_duplicate_groups(groups, sort_key='savings_desc'):
     sort_functions = {
         'savings_desc': lambda g: g.get('impact', {}).get('total_savings_bytes', 0),
         'count_desc': lambda g: g.get('impact', {}).get('duplicate_count', 0), 
-        'date_desc': lambda g: max((p.get('date_taken', '') for p in g.get('photos', [])), default=''),
+        'date_desc': lambda g: max((p.get('timestamp', '') for p in g.get('photos', [])), default=''),
         'quality_desc': lambda g: max((p.get('quality_score', 0) for p in g.get('photos', [])), default=0)
     }
     
