@@ -111,7 +111,7 @@ PIL.UnidentifiedImageError: cannot identify image file '/var/.../IMG_XXXX.HEIC'
 
 ## 🟢 Low Priority Issues
 
-### 4. Progress Tracking Inconsistencies
+### 8. Progress Tracking Inconsistencies
 **Status**: Open  
 **Priority**: Low  
 **Date Reported**: 2025-08-25  
@@ -124,7 +124,84 @@ Progress reporting during analysis may show inconsistent or unclear status updat
 - [ ] Standardize progress reporting format
 - [ ] Add ETA calculations for long operations
 
-### 5. UI/UX Improvements
+### 4. Pagination Not Working Properly
+**Status**: Open  
+**Priority**: Medium  
+**Reporter**: User  
+**Date Reported**: 2025-08-25  
+
+**Description:**
+Pagination functionality may not be working as expected in the legacy interface despite implementation being present.
+
+**Current Implementation:**
+- Pagination controls exist in `legacy_page_content.html` (lines 399-401)
+- JavaScript pagination variables and functions implemented (lines 424, 553-565, 589-621)
+- API endpoint `/api/groups` supports `page` and `limit` parameters (app.py lines 2302-2303)
+
+**Investigation Needed:**
+- [ ] Test pagination functionality with real data
+- [ ] Verify pagination controls appear and function correctly
+- [ ] Check if "Load More Groups" button works
+- [ ] Validate pagination metadata is returned properly
+- [ ] Ensure pagination state is maintained correctly
+
+**Expected Behavior:**
+- Users should be able to load additional groups progressively
+- Pagination controls should be visible when more groups are available
+- "Load More Groups" button should append new groups without replacing existing ones
+
+### 5. Filter Results Click Routing to Wrong Screen
+**Status**: Open  
+**Priority**: Medium  
+**Reporter**: User  
+**Date Reported**: 2025-08-25  
+
+**Description:**
+Clicking on clusters in the "Filter Results" section routes to an old screen instead of the proper `/legacy` interface for that cluster.
+
+**Current Behavior:**
+- Filter Results section displays clusters correctly
+- Clicking on a cluster navigates to outdated interface
+- User cannot access proper legacy interface functionality for individual clusters
+
+**Expected Behavior:**
+- Clicking on a cluster should route to `/legacy` with cluster-specific parameters
+- Should maintain all filtering context when navigating to legacy view
+- Legacy interface should load only the selected cluster's photos
+
+**Investigation Needed:**
+- [ ] Check click handlers on cluster cards in filter results
+- [ ] Verify routing URLs for individual clusters
+- [ ] Ensure legacy interface accepts cluster-specific parameters
+- [ ] Test navigation flow from filters → cluster selection → legacy interface
+
+### 6. Date Filtering Not Passed to Legacy Screen
+**Status**: Open  
+**Priority**: Medium  
+**Reporter**: User  
+**Date Reported**: 2025-08-25  
+
+**Description:**
+Date filters applied on the filters page are not correctly passed through to the legacy screen, resulting in groups from various years appearing despite filtering for a specific year (e.g., 2020).
+
+**Current Behavior:**
+- User applies date filter (e.g., 2020) on filters page
+- Clicks "Analyze for Duplicates" 
+- Legacy screen shows groups from multiple years, ignoring date filter
+
+**Expected Behavior:**
+- Date filters should be preserved and applied in legacy interface
+- Only groups matching the selected date range should appear
+- Filter context should be maintained throughout the entire workflow
+
+**Investigation Needed:**
+- [ ] Check if date filters are included in analysis request
+- [ ] Verify filter parameters are passed to `/api/analyze-duplicates`
+- [ ] Ensure legacy interface respects date filtering parameters
+- [ ] Test date filtering with various year selections
+- [ ] Validate date filtering logic in duplicate detection pipeline
+
+### 7. UI/UX Improvements
 **Status**: Open  
 **Priority**: Low  
 **Date Reported**: Various  

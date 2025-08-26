@@ -609,18 +609,6 @@ def legacy():
                         statsDiv.style.display = 'grid';
                         statsDiv.innerHTML = `
                             <div class="stat-card">
-                                <div class="stat-number">${data.total_photos.toLocaleString()}</div>
-                                <div class="stat-label">Total Photos</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">${data.total_size_gb ? data.total_size_gb.toFixed(1) + ' GB' : 'TBD'}</div>
-                                <div class="stat-label">Library Size</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">${data.sample_groups || 0}</div>
-                                <div class="stat-label">Sample Groups Found</div>
-                            </div>
-                            <div class="stat-card">
                                 <div class="stat-number">${data.estimated_savings}</div>
                                 <div class="stat-label">Est. Savings</div>
                             </div>
@@ -774,9 +762,9 @@ def legacy():
                                 <div class="group-meta">
                                     <div>📅 <strong>Time:</strong> ${timeSpan}</div>
                                     <div>📷 <strong>Camera:</strong> ${group.camera_model}</div>
-                                    <div>📸 <strong>Photos:</strong> ${group.photo_count}</div>
-                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb} MB</div>
-                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb} MB</div>
+                                    <div>📸 <strong>Photos:</strong> ${group.photo_count || 0}</div>
+                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb ? group.total_size_mb + ' MB' : 'TBD'}</div>
+                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb ? group.potential_savings_mb + ' MB' : 'TBD'}</div>
                                 </div>
                             </div>
                             <div class="group-actions" style="margin: 16px 0; display: flex; justify-content: space-between; align-items: center;">
@@ -814,9 +802,7 @@ def legacy():
                                 <div class="photo-filename" onclick="event.stopPropagation(); openInPhotos('${photo.uuid}')">${photo.filename}</div>
                                 <div class="photo-info">
                                     <div>📅 ${timestamp}</div>
-                                    <div>📐 ${resolution}</div>
                                     <div>💾 ${fileSize}</div>
-                                    <div>🎯 Quality: ${photo.quality_score.toFixed(1)}/100</div>
                                 </div>
                                 <div class="photo-selection-area" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; background: ${isSelected ? 'rgba(220,53,69,0.8)' : 'rgba(40,167,69,0.8)'}; border-radius: 50%; margin: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: white; font-weight: bold;">
                                     ${isSelected ? '❌' : '🛡️'}
@@ -1220,9 +1206,7 @@ ${nextSteps}
                 
                 metadata.innerHTML = `
                     📅 ${timestamp}<br>
-                    📐 ${resolution}<br>
                     💾 ${fileSize}<br>
-                    🎯 Quality: ${photo.quality_score.toFixed(1)}/100<br>
                     📷 ${photo.camera_model || 'Unknown camera'}
                 `;
                 
@@ -1273,9 +1257,7 @@ ${nextSteps}
                     
                     metadata.innerHTML = `
                         📅 ${timestamp}<br>
-                        📐 ${resolution}<br>
                         💾 ${fileSize}<br>
-                        🎯 Quality: ${photo.quality_score.toFixed(1)}/100<br>
                         📷 ${photo.camera_model || 'Unknown camera'}
                     `;
                     
@@ -1368,8 +1350,8 @@ def api_stats():
     try:
         print("📊 Computing photo library statistics...")
         
-        # Scan photos (limited for initial testing)
-        photos = scanner.scan_photos(limit=200)  # Increased from 100 for better stats
+        # Scan photos (limited for performance testing)
+        photos = scanner.scan_photos(limit=500)  # Increased from 200 for better sample representation
         total_photos = len(photos)
         
         if total_photos == 0:

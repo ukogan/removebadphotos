@@ -87,6 +87,19 @@ class PhotoScanner:
         persistent_tracking_count = 0
         
         for photo in all_photos:
+            # Additional defensive filtering (secondary check)
+            # Skip videos if include_videos=False (should already be filtered by osxphotos query)
+            if not include_videos and photo.ismovie:
+                continue
+                
+            # Skip trashed photos (should already be filtered by intrash=False)  
+            if photo.intrash:
+                continue
+                
+            # Skip if not actually a photo and videos are disabled
+            if not include_videos and not photo.isphoto:
+                continue
+            
             # Check keyword-based filtering (primary)
             if photo.keywords and "marked-for-deletion" in photo.keywords:
                 marked_for_deletion_count += 1

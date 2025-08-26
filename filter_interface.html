@@ -735,18 +735,6 @@
                 <div class="stat-value" id="total-photos">-</div>
                 <div class="stat-label">Total Photos</div>
             </div>
-            <div class="stat">
-                <div class="stat-value" id="total-clusters">-</div>
-                <div class="stat-label">Duplicate Clusters</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="potential-savings">-</div>
-                <div class="stat-label">Potential Savings</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="scan-time">-</div>
-                <div class="stat-label">Scan Time</div>
-            </div>
         </div>
         
         <div class="filter-panel">
@@ -888,10 +876,6 @@
                     
                     // Update stats display
                     document.getElementById('total-photos').textContent = libraryStats.total_photos.toLocaleString();
-                    // Load cluster count from distributions API
-                    loadClusterTotals();
-                    document.getElementById('potential-savings').textContent = libraryStats.potential_savings_gb.toFixed(1) + ' GB';
-                    document.getElementById('scan-time').textContent = (libraryStats.scan_time_seconds || 0).toFixed(1) + 's';
                     
                     console.log('📊 Library stats loaded:', libraryStats);
                 } else {
@@ -902,22 +886,6 @@
             }
         }
         
-        // Load cluster totals from distributions API
-        async function loadClusterTotals() {
-            try {
-                const response = await fetch('/api/filter-distributions');
-                const data = await response.json();
-                
-                if (data.success) {
-                    document.getElementById('total-clusters').textContent = data.totals.clusters.toLocaleString();
-                    console.log('📊 Cluster totals loaded:', data.totals.clusters);
-                } else {
-                    console.error('Failed to load cluster totals');
-                }
-            } catch (error) {
-                console.error('Error loading cluster totals:', error);
-            }
-        }
         
         // Year selector handling
         function selectYear(year) {
@@ -1410,7 +1378,9 @@
             
             let statsHtml = '<div class="priority-stats">';
             Object.entries(priorityData).forEach(([level, data]) => {
-                const savingsGB = (data.potential_savings_bytes / (1024 * 1024 * 1024)).toFixed(1);
+                const savingsGB = data.potential_savings_bytes 
+                    ? (data.potential_savings_bytes / (1024 * 1024 * 1024)).toFixed(1)
+                    : '0.0';
                 statsHtml += `
                     <div class="priority-stat">
                         <strong>${level}</strong>: ${data.cluster_count} clusters, ${savingsGB}GB potential
