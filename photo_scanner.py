@@ -77,18 +77,48 @@ class PhotoScanner:
     
     def get_unprocessed_photos(self, include_videos: bool = False):
         """Get photos excluding those in trash and already marked for deletion."""
+        import time
+        total_start = time.time()
+        print(f"🔍 Starting photo database query (include_videos={include_videos})...")
+        
+        # Step 1: Get database connection
+        db_start = time.time()
         db = self.get_photosdb()
+        db_time = time.time() - db_start
+        print(f"📊 Database connection: {db_time:.2f}s")
+        
+        # Step 2: Query photos from database
+        query_start = time.time()
+        print(f"🔍 Querying database: intrash=False, movies={not include_videos}")
         all_photos = db.photos(intrash=False, movies=not include_videos)
+        query_time = time.time() - query_start
+        print(f"📊 Database query completed: {query_time:.2f}s")
         
-        # Load persistent tracking file
+        # Step 3: Convert to list and count
+        list_start = time.time()
+        all_photos_list = list(all_photos)
+        list_time = time.time() - list_start
+        print(f"📊 Query result to list conversion: {list_time:.2f}s, found {len(all_photos_list)} photos")
+        
+        # Step 4: Load persistent tracking file
+        tracking_start = time.time()
         processed_uuids = self._load_processed_uuids()
+        tracking_time = time.time() - tracking_start
+        print(f"📊 Load processed UUIDs: {tracking_time:.2f}s, {len(processed_uuids)} tracked")
         
-        # Filter out photos already marked for deletion (both keyword and UUID tracking)
+        # Step 5: Filter out photos already marked for deletion
+        filter_start = time.time()
         photos = []
         marked_for_deletion_count = 0
         persistent_tracking_count = 0
         
-        for photo in all_photos:
+        for i, photo in enumerate(all_photos_list):
+            # Progress logging for large libraries
+            if i % 1000 == 0 and i > 0:
+                elapsed = time.time() - filter_start
+                rate = i / elapsed if elapsed > 0 else 0
+                print(f"📊 Processing photos: {i}/{len(all_photos_list)} ({rate:.0f} photos/sec)")
+            
             # Additional defensive filtering (secondary check)
             # Skip videos if include_videos=False (should already be filtered by osxphotos query)
             if not include_videos and photo.ismovie:
@@ -114,7 +144,14 @@ class PhotoScanner:
                 
             photos.append(photo)
         
+        filter_time = time.time() - filter_start
+        total_time = time.time() - total_start
+        
         total_excluded = marked_for_deletion_count + persistent_tracking_count
+        print(f"📊 Photo filtering completed: {filter_time:.2f}s")
+        print(f"📊 TOTAL get_unprocessed_photos time: {total_time:.2f}s")
+        print(f"📊 Final results: {len(photos)} photos, {total_excluded} excluded")
+        
         if total_excluded > 0:
             print(f"🔄 Excluded {total_excluded} photos already marked for deletion")
             if marked_for_deletion_count > 0:
