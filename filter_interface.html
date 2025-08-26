@@ -499,6 +499,59 @@
             font-size: 10px;
             color: #718096;
         }
+        
+        /* Quintile-specific styles */
+        .quintile-bar {
+            background: #6366f1 !important;
+        }
+        
+        .quintile-bar:hover {
+            background: #4f46e5 !important;
+        }
+        
+        .quintile-bar.highlighted {
+            background: #10b981 !important;
+        }
+        
+        .quintile-labels {
+            justify-content: space-around !important;
+            font-weight: 600;
+            font-size: 11px;
+        }
+        
+        .quintile-labels span {
+            text-align: center;
+            padding: 2px 4px;
+            background: #f3f4f6;
+            border-radius: 3px;
+        }
+        
+        .quintile-legend {
+            margin-top: 12px;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .legend-title {
+            font-weight: 600;
+            font-size: 12px;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 4px;
+        }
+        
+        .legend-item {
+            font-size: 11px;
+            color: #6b7280;
+            padding: 2px 0;
+        }
 
         .filter-actions {
             display: flex;
@@ -815,30 +868,14 @@
                 </div>
             </div>
             
-            <div class="analyze-selected-section" id="analyze-selected-section" style="display: none;">
-                <div class="analyze-selected-info">
-                    <h3>🎯 Ready for Analysis</h3>
-                    <div id="selection-summary">
-                        <span id="selected-clusters-count">0</span> clusters selected 
-                        (<span id="selected-photos-count">0</span> photos)
-                    </div>
-                    <p>Analyze your filtered photos for duplicates and get results immediately.</p>
-                </div>
-                <div class="analyze-selected-actions">
-                    <button class="btn btn-success btn-large" onclick="analyzeForDuplicates()" id="analyzeForDuplicatesBtn">
-                        🔍 Analyze for Duplicates
-                    </button>
-                    <button class="btn btn-outline" onclick="clearAllFilters()">
-                        🗑️ Clear Filters
-                    </button>
-                </div>
-            </div>
+            <!-- Analyze section removed - filters now redirect directly to analysis -->
             
             <!-- Analysis Progress Section -->
             <div id="analysisProgress" class="progress-container" style="display: none;">
-                <div class="analyze-selected-section">
+                <div id="analyze-selected-section" class="analyze-selected-section">
                     <div class="analyze-selected-info">
                         <h3>🔄 Analyzing Photos...</h3>
+                        <p>Clusters: <span id="selected-clusters-count">All</span> | Photos: <span id="selected-photos-count">Available</span></p>
                         <div class="progress">
                             <div class="progress-bar" id="progressBar"></div>
                         </div>
@@ -850,36 +887,40 @@
             </div>
         </div>
         
-        <div class="results-section">
-            <h2>📊 Filter Results</h2>
-            <div id="results-content">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Click "Apply Filters" to see results
-                </div>
-            </div>
-        </div>
+        <!-- Results section removed - filters now redirect directly to analysis -->
     </div>
     
     <script>
         let libraryStats = null;
         let currentFilters = {};
         
-        // Load initial library stats
+        // Load initial library stats and initialize lazy loader cache
         async function loadLibraryStats() {
             try {
-                const response = await fetch('/api/library-stats');
+                // Use heatmap-data endpoint which initializes lazy loader cache
+                const response = await fetch('/api/heatmap-data');
                 const data = await response.json();
                 
                 if (data.success) {
-                    libraryStats = data.stats;
+                    libraryStats = data.library_stats;
                     
                     // Update stats display
                     document.getElementById('total-photos').textContent = libraryStats.total_photos.toLocaleString();
                     
-                    console.log('📊 Library stats loaded:', libraryStats);
+                    console.log('📊 Library stats loaded and lazy loader cache initialized:', libraryStats);
+                    
+                    // Now that cache is initialized, load filter distributions
+                    await loadDistributions();
                 } else {
                     console.error('Failed to load library stats:', data.error);
+                    // Fallback to basic library stats
+                    const fallbackResponse = await fetch('/api/library-stats');
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData.success) {
+                        libraryStats = fallbackData.stats;
+                        document.getElementById('total-photos').textContent = libraryStats.total_photos.toLocaleString();
+                        console.log('📊 Using fallback library stats:', libraryStats);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading library stats:', error);
@@ -1041,32 +1082,57 @@
             }
         }
         
+        // Apply filters - streamlined workflow: save session and redirect  
         async function applyFilters() {
-            const resultsContent = document.getElementById('results-content');
-            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Applying filters...</div>';
+            console.log('🔍 Applying filters and redirecting to analysis:', currentFilters);
+            
+            // Disable button and show loading
+            const applyBtn = document.querySelector('button[onclick="applyFilters()"]');
+            const originalText = applyBtn.innerHTML;
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '⏳ Saving Filters...';
             
             try {
-                // Build query string
-                const params = new URLSearchParams();
-                if (currentFilters.year) params.append('year', currentFilters.year);
-                if (currentFilters.min_size_mb > 0) params.append('min_size_mb', currentFilters.min_size_mb);
-                if (currentFilters.max_size_mb < 100) params.append('max_size_mb', currentFilters.max_size_mb);
-                if (currentFilters.priority_levels) params.append('priority_levels', currentFilters.priority_levels.join(','));
-                if (currentFilters.file_types) params.append('file_types', currentFilters.file_types.join(','));
+                // Save filter session to backend
+                const filterSession = {
+                    filters: {
+                        year: currentFilters.year || null,
+                        min_size_mb: currentFilters.min_size_mb || null,
+                        max_size_mb: currentFilters.max_size_mb || null,
+                        priority_levels: currentFilters.priority_levels || null,
+                        file_types: currentFilters.file_types || null
+                    },
+                    timestamp: new Date().toISOString()
+                };
                 
-                console.log('🔍 Applying filters:', currentFilters);
+                const response = await fetch('/api/save-filter-criteria', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(filterSession)
+                });
                 
-                const response = await fetch(`/api/filter-clusters?${params}`);
                 const data = await response.json();
                 
                 if (data.success) {
-                    displayResults(data);
+                    console.log('✅ Filter session saved, redirecting to analysis...');
+                    // Redirect directly to legacy interface which will use filtered results
+                    window.location.href = '/legacy';
                 } else {
-                    resultsContent.innerHTML = `<div class="loading">❌ Error: ${data.error}</div>`;
+                    throw new Error(data.error || 'Failed to save filter session');
                 }
+                
             } catch (error) {
-                console.error('Error applying filters:', error);
-                resultsContent.innerHTML = '<div class="loading">❌ Network error occurred</div>';
+                console.error('❌ Error saving filter session:', error);
+                applyBtn.disabled = false;
+                applyBtn.innerHTML = originalText;
+                
+                // Show error message
+                const previewDiv = document.getElementById('filter-preview');
+                if (previewDiv) {
+                    previewDiv.innerHTML = '<div class="loading-distributions">❌ Failed to save filters. Please try again.</div>';
+                }
             }
         }
         
@@ -1301,10 +1367,11 @@
                 
                 if (data.success) {
                     console.log('📊 Size histogram data:', data.distributions.size_histogram);
+                    console.log('📊 Size quintiles data:', data.distributions.size_quintiles);
                     updateYearButtons(data.distributions.years);
                     updateFileTypeStats(data.distributions.file_types);
                     updatePriorityStats(data.distributions.priorities);
-                    updateSizeHistogram(data.distributions.size_histogram);
+                    updateSizeHistogram(data.distributions.size_histogram, data.distributions.size_quintiles);
                     updateSmartRecommendations([data.smart_recommendation]);
                 } else {
                     console.error('Failed to load distributions:', data.error);
@@ -1395,8 +1462,8 @@
             }
         }
         
-        function updateSizeHistogram(histogramData) {
-            console.log('💾 Updating size histogram:', histogramData);
+        function updateSizeHistogram(histogramData, quintileData) {
+            console.log('💾 Updating size histogram with quintiles:', histogramData, quintileData);
             const histogramDiv = document.getElementById('size-histogram');
             
             if (!histogramDiv) {
@@ -1404,97 +1471,121 @@
                 return;
             }
             
-            if (!histogramData || Object.keys(histogramData).length === 0) {
-                console.log('💾 No histogram data available');
+            if (!quintileData || quintileData.length === 0) {
+                console.log('💾 No quintile data available');
                 histogramDiv.innerHTML = '<div class="loading-distributions">No size distribution data available</div>';
                 return;
             }
             
-            // Find the maximum count for scaling
-            const maxCount = Math.max(...Object.values(histogramData));
-            const total = Object.values(histogramData).reduce((sum, count) => sum + count, 0);
+            // Store quintile data globally for filtering
+            window.sizeQuintiles = quintileData;
             
-            // Create histogram bars
+            const total = quintileData.reduce((sum, quintile) => sum + quintile.count, 0);
+            const maxCount = Math.max(...quintileData.map(q => q.count));
+            
+            // Create histogram bars using quintiles
             let html = `
-                <div class="histogram-title">📊 Photo Size Distribution (${total.toLocaleString()} total photos)</div>
+                <div class="histogram-title">📊 Photo Size Distribution (${total.toLocaleString()} total photos) - Equal Quintiles</div>
                 <div class="histogram-chart">
             `;
             
-            // Create bars for all buckets from 0 to 100+
-            for (let bucket = 0; bucket <= 100; bucket += 10) {
-                const count = histogramData[bucket] || 0;
-                const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                const label = bucket === 100 ? `${bucket}+ MB` : `${bucket}-${bucket + 9} MB`;
-                const photoPercentage = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+            // Create bars for each quintile (0-4)
+            quintileData.forEach((quintile, index) => {
+                const percentage = maxCount > 0 ? (quintile.count / maxCount) * 100 : 0;
+                const photoPercentage = total > 0 ? ((quintile.count / total) * 100).toFixed(1) : '0.0';
                 
                 html += `
-                    <div class="histogram-bar" style="height: ${percentage}%" data-bucket="${bucket}">
+                    <div class="histogram-bar quintile-bar" style="height: ${percentage}%" 
+                         data-quintile="${index}" 
+                         data-min-size="${quintile.min_size}"
+                         data-max-size="${quintile.max_size}">
                         <div class="bar-tooltip">
-                            ${label}<br>
-                            ${count.toLocaleString()} photos (${photoPercentage}%)
+                            Quintile ${index + 1}: ${quintile.label}<br>
+                            ${quintile.count.toLocaleString()} photos (${photoPercentage}%)
                         </div>
                     </div>
                 `;
-            }
+            });
             
             html += `
                 </div>
-                <div class="histogram-labels">
-                    <span>0-9</span>
-                    <span>10-19</span>
-                    <span>20-29</span>
-                    <span>30-39</span>
-                    <span>40-49</span>
-                    <span>50-59</span>
-                    <span>60-69</span>
-                    <span>70-79</span>
-                    <span>80-89</span>
-                    <span>90-99</span>
-                    <span>100+</span>
+                <div class="histogram-labels quintile-labels">
+            `;
+            
+            // Create labels for each quintile
+            quintileData.forEach((quintile, index) => {
+                html += `<span title="Quintile ${index + 1}: ${quintile.label}">Q${index + 1}</span>`;
+            });
+            
+            html += `
+                </div>
+                <div class="quintile-legend">
+                    <div class="legend-title">📊 Quintile Details:</div>
+                    <div class="legend-items">
+            `;
+            
+            // Add detailed legend
+            quintileData.forEach((quintile, index) => {
+                html += `
+                    <div class="legend-item">
+                        <strong>Q${index + 1}:</strong> ${quintile.label} (${quintile.count.toLocaleString()} photos)
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
                 </div>
             `;
             
             histogramDiv.innerHTML = html;
             
-            // Add click handlers for histogram bars to adjust size filter
-            histogramDiv.querySelectorAll('.histogram-bar').forEach(bar => {
+            // Add click handlers for quintile bars
+            histogramDiv.querySelectorAll('.quintile-bar').forEach(bar => {
                 bar.addEventListener('click', () => {
-                    const bucket = parseInt(bar.dataset.bucket);
-                    const minSize = bucket;
-                    const maxSize = bucket === 100 ? 100 : bucket + 9;
+                    const quintileIndex = parseInt(bar.dataset.quintile);
+                    const minSize = parseFloat(bar.dataset.minSize);
+                    const maxSize = parseFloat(bar.dataset.maxSize);
                     
-                    // Update the size sliders
-                    document.getElementById('min-size').value = minSize;
-                    document.getElementById('max-size').value = maxSize;
+                    // Update the size sliders to match the quintile range
+                    document.getElementById('min-size').value = Math.floor(minSize);
+                    document.getElementById('max-size').value = Math.ceil(maxSize);
                     updateSizeDisplay();
                     
                     // Highlight the selected bar
-                    histogramDiv.querySelectorAll('.histogram-bar').forEach(b => b.classList.remove('highlighted'));
+                    histogramDiv.querySelectorAll('.quintile-bar').forEach(b => b.classList.remove('highlighted'));
                     bar.classList.add('highlighted');
+                    
+                    console.log(`💾 Selected quintile ${quintileIndex + 1}: ${minSize}-${maxSize}MB`);
                 });
             });
             
-            // Highlight current size range
-            updateHistogramHighlight();
+            // Highlight current size range based on quintiles
+            updateQuintileHighlight();
             
-            console.log('💾 Size histogram update complete');
+            console.log('💾 Quintile-based size histogram update complete');
         }
         
-        function updateHistogramHighlight() {
-            const minSize = parseInt(document.getElementById('min-size').value);
-            const maxSize = parseInt(document.getElementById('max-size').value);
+        function updateQuintileHighlight() {
+            const minSize = parseFloat(document.getElementById('min-size').value);
+            const maxSize = parseFloat(document.getElementById('max-size').value);
             const histogramDiv = document.getElementById('size-histogram');
             
-            if (!histogramDiv) return;
+            if (!histogramDiv || !window.sizeQuintiles) return;
             
-            histogramDiv.querySelectorAll('.histogram-bar').forEach(bar => {
-                const bucket = parseInt(bar.dataset.bucket);
-                const bucketEnd = bucket === 100 ? 100 : bucket + 9;
+            histogramDiv.querySelectorAll('.quintile-bar').forEach(bar => {
+                const quintileMinSize = parseFloat(bar.dataset.minSize);
+                const quintileMaxSize = parseFloat(bar.dataset.maxSize);
                 
-                // Check if this bucket overlaps with the current size range
-                const overlaps = (bucket <= maxSize && bucketEnd >= minSize);
+                // Check if this quintile overlaps with the current size range
+                const overlaps = (quintileMinSize <= maxSize && quintileMaxSize >= minSize);
                 bar.classList.toggle('highlighted', overlaps);
             });
+        }
+        
+        // Legacy function for compatibility - now calls the quintile version
+        function updateHistogramHighlight() {
+            updateQuintileHighlight();
         }
         
         function updateSmartRecommendations(recommendations) {
@@ -1585,7 +1676,7 @@
             // First trigger the initial analysis
             loadInitialAnalysis();
             loadLibraryStats();
-            loadDistributions();
+            // Note: loadDistributions() is called by loadLibraryStats() after cache initialization
             
             // Set initial state
             document.querySelector('.year-btn[data-year="all"]').classList.add('active');

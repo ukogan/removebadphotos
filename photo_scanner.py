@@ -46,6 +46,8 @@ class PhotoData:
     original_filename: Optional[str] = None
     perceptual_hash: Optional[str] = None
     quality_score: float = 0.0
+    quality_method: str = "unknown"  # "favorite", "quality", "inferred quality", "unknown"
+    is_favorite: bool = False
     analyzed: bool = False
 
 @dataclass
@@ -75,18 +77,48 @@ class PhotoScanner:
     
     def get_unprocessed_photos(self, include_videos: bool = False):
         """Get photos excluding those in trash and already marked for deletion."""
+        import time
+        total_start = time.time()
+        print(f"🔍 Starting photo database query (include_videos={include_videos})...")
+        
+        # Step 1: Get database connection
+        db_start = time.time()
         db = self.get_photosdb()
+        db_time = time.time() - db_start
+        print(f"📊 Database connection: {db_time:.2f}s")
+        
+        # Step 2: Query photos from database
+        query_start = time.time()
+        print(f"🔍 Querying database: intrash=False, movies={not include_videos}")
         all_photos = db.photos(intrash=False, movies=not include_videos)
+        query_time = time.time() - query_start
+        print(f"📊 Database query completed: {query_time:.2f}s")
         
-        # Load persistent tracking file
+        # Step 3: Convert to list and count
+        list_start = time.time()
+        all_photos_list = list(all_photos)
+        list_time = time.time() - list_start
+        print(f"📊 Query result to list conversion: {list_time:.2f}s, found {len(all_photos_list)} photos")
+        
+        # Step 4: Load persistent tracking file
+        tracking_start = time.time()
         processed_uuids = self._load_processed_uuids()
+        tracking_time = time.time() - tracking_start
+        print(f"📊 Load processed UUIDs: {tracking_time:.2f}s, {len(processed_uuids)} tracked")
         
-        # Filter out photos already marked for deletion (both keyword and UUID tracking)
+        # Step 5: Filter out photos already marked for deletion
+        filter_start = time.time()
         photos = []
         marked_for_deletion_count = 0
         persistent_tracking_count = 0
         
-        for photo in all_photos:
+        for i, photo in enumerate(all_photos_list):
+            # Progress logging for large libraries
+            if i % 1000 == 0 and i > 0:
+                elapsed = time.time() - filter_start
+                rate = i / elapsed if elapsed > 0 else 0
+                print(f"📊 Processing photos: {i}/{len(all_photos_list)} ({rate:.0f} photos/sec)")
+            
             # Additional defensive filtering (secondary check)
             # Skip videos if include_videos=False (should already be filtered by osxphotos query)
             if not include_videos and photo.ismovie:
@@ -112,7 +144,14 @@ class PhotoScanner:
                 
             photos.append(photo)
         
+        filter_time = time.time() - filter_start
+        total_time = time.time() - total_start
+        
         total_excluded = marked_for_deletion_count + persistent_tracking_count
+        print(f"📊 Photo filtering completed: {filter_time:.2f}s")
+        print(f"📊 TOTAL get_unprocessed_photos time: {total_time:.2f}s")
+        print(f"📊 Final results: {len(photos)} photos, {total_excluded} excluded")
+        
         if total_excluded > 0:
             print(f"🔄 Excluded {total_excluded} photos already marked for deletion")
             if marked_for_deletion_count > 0:
@@ -168,6 +207,9 @@ class PhotoScanner:
             # Calculate organization score
             org_score = self.calculate_organization_score(albums, folder_names, keywords, path)
             
+            # Check if photo is marked as favorite
+            is_favorite = getattr(photo, 'favorite', False)
+            
             return PhotoData(
                 uuid=uuid,
                 path=path,
@@ -183,7 +225,8 @@ class PhotoScanner:
                 albums=albums,
                 folder_names=folder_names,
                 keywords=keywords,
-                organization_score=org_score
+                organization_score=org_score,
+                is_favorite=is_favorite
             )
             
         except Exception as e:
@@ -244,9 +287,13 @@ class PhotoScanner:
         
         return min(score, 100.0)  # Cap at 100
     
-    def analyze_image_quality(self, image_path: str) -> float:
-        """Analyze image quality using multiple metrics. Returns score 0-100."""
+    def analyze_image_quality(self, image_path: str, photo_data: PhotoData = None) -> tuple[float, str]:
+        """Analyze image quality using multiple metrics. Returns (score, method)."""
         try:
+            # Check for favorite first - favorites get max score
+            if photo_data and photo_data.is_favorite:
+                return 100.0, "favorite"
+            
             # Load image with OpenCV
             img = cv2.imread(image_path)
             if img is None:
@@ -255,7 +302,7 @@ class PhotoScanner:
                     img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             
             if img is None:
-                return 0.0
+                return 0.0, "unknown"
             
             # Convert to grayscale for analysis
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -287,11 +334,11 @@ class PhotoScanner:
                 noise_score * 0.2            # 20%
             ) * 100
             
-            return min(max(quality_score, 0.0), 100.0)  # Clamp to 0-100
+            return min(max(quality_score, 0.0), 100.0), "quality"
             
         except Exception as e:
             print(f"Error analyzing image quality for {image_path}: {e}")
-            return 0.0
+            return 0.0, "unknown"
     
     def scan_photos(self, limit: Optional[int] = None, prioritize_accessible: bool = True) -> List[PhotoData]:
         """Scan Photos library and extract metadata for all photos."""
@@ -461,8 +508,12 @@ class PhotoScanner:
             print(f"Error calculating similarity between hashes {hash1} and {hash2}: {e}")
             return 0.0
     
-    def analyze_photo_quality(self, photo_data: PhotoData) -> float:
+    def analyze_photo_quality(self, photo_data: PhotoData) -> tuple[float, str]:
         """Enhanced quality assessment including organization metadata."""
+        # Check for favorite first - favorites get max score
+        if photo_data.is_favorite:
+            return 100.0, "favorite"
+        
         quality_score = 0.0
         
         # Resolution score (0-30 points) - reduced to make room for organization
@@ -501,7 +552,7 @@ class PhotoScanner:
             quality_score += (org_score / 100.0) * 25
             print(f"🗂️ {photo_data.filename} organization bonus: +{(org_score / 100.0) * 25:.1f} pts (albums: {len(photo_data.albums or [])}, folders: {len(photo_data.folder_names or [])})")
         
-        return min(quality_score, 100.0)  # Cap at 100
+        return min(quality_score, 100.0), "inferred quality"  # Cap at 100
     
     def enhanced_grouping_with_similarity(self, groups: List[PhotoGroup], progress_callback=None) -> List[PhotoGroup]:
         """Enhance groups with perceptual hash similarity analysis."""
@@ -535,13 +586,13 @@ class PhotoScanner:
                     # Try image-based quality analysis first, fallback to metadata-based
                     if photo.path and os.path.exists(photo.path):
                         print(f"🔍 Analyzing image quality for {photo.filename}...")
-                        photo.quality_score = self.analyze_image_quality(photo.path)
+                        photo.quality_score, photo.quality_method = self.analyze_image_quality(photo.path, photo)
                     else:
                         # Fallback to metadata-based quality analysis
-                        photo.quality_score = self.analyze_photo_quality(photo)
+                        photo.quality_score, photo.quality_method = self.analyze_photo_quality(photo)
                     
                     photo.analyzed = True
-                    print(f"📊 Quality score for {photo.filename}: {photo.quality_score:.1f}")
+                    print(f"📊 Quality score for {photo.filename}: {photo.quality_score:.1f} ({photo.quality_method})")
             
             # Re-evaluate recommendation based on quality scores
             photos_with_quality = [p for p in group.photos if p.quality_score > 0]

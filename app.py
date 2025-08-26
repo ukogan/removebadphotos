@@ -568,6 +568,12 @@ def legacy():
             <!-- Photo groups will be populated here -->
         </div>
 
+        <!-- Pagination controls -->
+        <div id="paginationControls" class="controls" style="display: none;">
+            <button class="btn" onclick="loadMoreGroups()" id="loadMoreBtn">📄 Load More Groups</button>
+            <span id="paginationStatus" style="margin-left: 15px;"></span>
+        </div>
+
         <!-- Full-screen preview modal -->
         <div id="previewModal" class="preview-modal" onclick="closePreview()">
             <div class="preview-content" onclick="event.stopPropagation()">
@@ -588,6 +594,11 @@ def legacy():
         <script>
             let groupsLoaded = false;
             let photoSelections = {}; // Track user selections by group_id
+            
+            // Pagination variables
+            let currentPage = 1;
+            let totalGroupsAvailable = 0;
+            let hasMoreGroups = false;
 
             // Load stats immediately (working approach)
             console.log('Script starting...');
@@ -711,10 +722,23 @@ def legacy():
                         if (data.success) {
                             allGroups = data.groups; // Store for calculations
                             displayGroups(data.groups);
+                            
+                            // Update pagination state
+                            totalGroupsAvailable = data.total_groups || data.groups.length;
+                            hasMoreGroups = data.has_next || false;
+                            
                             status.innerHTML = `✅ Analysis Complete • Found ${data.total_groups} groups`;
                             status.title = 'Photo analysis completed successfully';
                             btn.innerHTML = '✅ Analysis Complete';
                             groupsLoaded = true;
+                            
+                            // Show pagination controls if there are more groups
+                            if (hasMoreGroups) {
+                                const paginationControls = document.getElementById('paginationControls');
+                                const paginationStatus = document.getElementById('paginationStatus');
+                                paginationControls.style.display = 'block';
+                                paginationStatus.innerHTML = `Showing ${data.groups.length} of ${totalGroupsAvailable} groups`;
+                            }
                         } else {
                             status.innerHTML = `❌ Error: ${data.error}`;
                             status.title = '';
@@ -733,6 +757,65 @@ def legacy():
                         status.title = '';
                         btn.disabled = false;
                         btn.innerHTML = '🔍 Analyze Photo Groups';
+                    });
+            }
+            
+            function loadMoreGroups() {
+                if (!hasMoreGroups) return;
+                
+                const btn = document.getElementById('loadMoreBtn');
+                const status = document.getElementById('paginationStatus');
+                
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Loading...';
+                
+                // Get URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const priority = urlParams.get('priority');
+                const limit = urlParams.get('limit') || '10';
+                
+                // Calculate next page
+                const nextPage = currentPage + 1;
+                
+                let apiUrl;
+                if (priority) {
+                    // Use priority-filtered API endpoint with pagination
+                    apiUrl = `/api/groups?priority=${priority}&limit=${limit}&page=${nextPage}`;
+                } else {
+                    // Use full analysis API endpoint with pagination
+                    apiUrl = `/api/groups?limit=${limit}&page=${nextPage}`;
+                }
+                
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Append new groups to existing ones
+                            allGroups = [...allGroups, ...data.groups];
+                            appendGroups(data.groups); // Need to create this function
+                            
+                            // Update pagination state
+                            currentPage = nextPage;
+                            hasMoreGroups = data.has_next || false;
+                            
+                            if (hasMoreGroups) {
+                                btn.disabled = false;
+                                btn.innerHTML = '📄 Load More Groups';
+                                status.innerHTML = `Showing ${allGroups.length} of ${totalGroupsAvailable} groups`;
+                            } else {
+                                btn.style.display = 'none';
+                                status.innerHTML = `✅ All ${totalGroupsAvailable} groups loaded`;
+                            }
+                        } else {
+                            status.innerHTML = `❌ Failed to load more groups: ${data.error}`;
+                            btn.disabled = false;
+                            btn.innerHTML = '📄 Load More Groups';
+                        }
+                    })
+                    .catch(error => {
+                        status.innerHTML = `❌ Failed to load more groups: ${error}`;
+                        btn.disabled = false;
+                        btn.innerHTML = '📄 Load More Groups';
                     });
             }
 
@@ -803,6 +886,7 @@ def legacy():
                                 <div class="photo-info">
                                     <div>📅 ${timestamp}</div>
                                     <div>💾 ${fileSize}</div>
+                                    <div>⭐ ${photo.quality_score ? photo.quality_score.toFixed(1) : '0.0'} ${photo.quality_method === 'favorite' ? '(favorite)' : photo.quality_method === 'quality' ? '(quality)' : photo.quality_method === 'inferred quality' ? '(inferred)' : ''}</div>
                                 </div>
                                 <div class="photo-selection-area" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; background: ${isSelected ? 'rgba(220,53,69,0.8)' : 'rgba(40,167,69,0.8)'}; border-radius: 50%; margin: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: white; font-weight: bold;">
                                     ${isSelected ? '❌' : '🛡️'}
@@ -815,6 +899,84 @@ def legacy():
                 });
                 
                 container.innerHTML = html;
+                updateSelectionSummary();
+            }
+            
+            function appendGroups(groups) {
+                const container = document.getElementById('groupsContainer');
+                
+                if (groups.length === 0) return;
+                
+                let html = '';
+                
+                groups.forEach(group => {
+                    const timeSpan = new Date(group.time_window_start).toLocaleString() + 
+                                   ' - ' + new Date(group.time_window_end).toLocaleString();
+                    
+                    // Initialize selections for this group with NO photos selected (require explicit user action)
+                    if (!photoSelections[group.group_id]) {
+                        photoSelections[group.group_id] = [];
+                    }
+                    
+                    html += `
+                        <div class="group-card">
+                            <div class="group-header">
+                                <div class="group-title">📁 ${group.group_id}</div>
+                                <div class="group-meta">
+                                    <div>📅 <strong>Time:</strong> ${timeSpan}</div>
+                                    <div>📷 <strong>Camera:</strong> ${group.camera_model}</div>
+                                    <div>📸 <strong>Photos:</strong> ${group.photo_count || 0}</div>
+                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb ? group.total_size_mb + ' MB' : 'TBD'}</div>
+                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb ? group.potential_savings_mb + ' MB' : 'TBD'}</div>
+                                </div>
+                            </div>
+                            <div class="group-actions" style="margin: 16px 0; display: flex; justify-content: space-between; align-items: center;">
+                                <div class="primary-actions">
+                                    <button class="action-btn keep-all-btn" onclick="keepAllPhotos('${group.group_id}')" style="background: #28a745; color: white; border: none; padding: 10px 16px; margin-right: 8px; border-radius: 6px; cursor: pointer; font-weight: 600;">🛡️ Keep All Photos</button>
+                                    <button class="action-btn delete-duplicates-btn" onclick="deleteAllButOne('${group.group_id}')" style="background: #dc3545; color: white; border: none; padding: 10px 16px; margin-right: 8px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Delete Duplicates</button>
+                                    <button class="action-btn delete-all-btn" onclick="deleteAllPhotos('${group.group_id}')" style="background: #721c24; color: white; border: none; padding: 10px 16px; margin-right: 8px; border-radius: 6px; cursor: pointer; font-weight: bold;">❌ Delete All Photos</button>
+                                </div>
+                                <div class="secondary-actions">
+                                    <button class="action-btn why-grouped-btn" onclick="showWhyGrouped('${group.group_id}')" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">ℹ️ Grouping Info</button>
+                                </div>
+                            </div>
+                            <div class="photos-grid">
+                    `;
+                    
+                    group.photos.forEach(photo => {
+                        const timestamp = photo.timestamp ? new Date(photo.timestamp).toLocaleString() : 'Unknown';
+                        const fileSize = photo.file_size > 0 ? `${(photo.file_size / (1024*1024)).toFixed(1)} MB` : 'Unknown';
+                        
+                        const isSelected = photoSelections[group.group_id].includes(photo.uuid);
+                        
+                        html += `
+                            <div class="photo-card ${isSelected ? 'selected' : ''}" data-group="${group.group_id}" data-photo="${photo.uuid}" data-photo-index="${group.photos.indexOf(photo)}">
+                                <div class="photo-loading" id="loading_${photo.uuid}">📷 Loading...</div>
+                                <img class="photo-thumbnail" 
+                                     src="/api/thumbnail/${photo.uuid}" 
+                                     alt="${photo.filename}"
+                                     style="display: none;" 
+                                     onload="this.style.display='block'; document.getElementById('loading_${photo.uuid}').style.display='none';"
+                                     onerror="this.style.display='none'; document.getElementById('loading_${photo.uuid}').innerHTML='❌ Could not load image';"
+                                     onclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});">
+                                <div class="photo-filename" onclick="event.stopPropagation(); openInPhotos('${photo.uuid}')">${photo.filename}</div>
+                                <div class="photo-info">
+                                    <div>📅 ${timestamp}</div>
+                                    <div>💾 ${fileSize}</div>
+                                    <div>⭐ ${photo.quality_score ? photo.quality_score.toFixed(1) : '0.0'} ${photo.quality_method === 'favorite' ? '(favorite)' : photo.quality_method === 'quality' ? '(quality)' : photo.quality_method === 'inferred quality' ? '(inferred)' : ''}</div>
+                                </div>
+                                <div class="photo-selection-area" onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')" style="position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; background: ${isSelected ? 'rgba(220,53,69,0.8)' : 'rgba(40,167,69,0.8)'}; border-radius: 50%; margin: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: white; font-weight: bold;">
+                                    ${isSelected ? '❌' : '🛡️'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                });
+                
+                // Append to existing container content
+                container.innerHTML += html;
                 updateSelectionSummary();
             }
 
@@ -2230,6 +2392,7 @@ def api_analyze_cluster(cluster_id):
                         'height': photo.height,
                         'format': photo.format,
                         'quality_score': photo.quality_score,
+                        'quality_method': getattr(photo, 'quality_method', 'unknown'),
                         'organization_score': getattr(photo, 'organization_score', 0.0),
                         'albums': getattr(photo, 'albums', []) or [],
                         'folder_names': getattr(photo, 'folder_names', []) or [],
@@ -2317,6 +2480,7 @@ def api_groups():
                                 'height': 0,  # Not available in unified format
                                 'format': 'Unknown',  # Not available in unified format
                                 'quality_score': photo.get('quality_score', 0.0),
+                                'quality_method': photo.get('quality_method', 'unknown'),
                                 'organization_score': 0.0,  # Not available in unified format
                                 'albums': [],  # Not available in unified format
                                 'folder_names': [],  # Not available in unified format
@@ -2644,6 +2808,7 @@ def api_groups():
                         'height': photo.height,
                         'format': photo.format,
                         'quality_score': photo.quality_score,
+                        'quality_method': getattr(photo, 'quality_method', 'unknown'),
                         'organization_score': getattr(photo, 'organization_score', 0.0),
                         'albums': getattr(photo, 'albums', []) or [],
                         'folder_names': getattr(photo, 'folder_names', []) or [],
@@ -3458,6 +3623,7 @@ def api_cluster_analysis(cluster_id):
                         'height': photo.height,
                         'format': photo.format,
                         'quality_score': photo.quality_score,
+                        'quality_method': getattr(photo, 'quality_method', 'unknown'),
                         'organization_score': getattr(photo, 'organization_score', 0.0),
                         'albums': getattr(photo, 'albums', []) or [],
                         'folder_names': getattr(photo, 'folder_names', []) or [],
@@ -4015,8 +4181,20 @@ def api_analyze_duplicates():
         photos, excluded_count = scanner.get_unprocessed_photos()
         print(f"📊 Found {len(photos)} photos ({excluded_count} already marked for deletion)")
         
-        # Apply user filters
-        filtered_photos = photos  # TODO: Apply actual user filters here
+        # Apply user filters using existing filter logic
+        print(f"🔍 Applying filters: {filter_criteria}")
+        filtered_photos = apply_filter_criteria(photos, filter_criteria)
+        print(f"📊 Photos after filtering: {len(filtered_photos)} (from {len(photos)} total)")
+        
+        if len(filtered_photos) == 0:
+            print("⚠️ No photos match filter criteria")
+            return jsonify({
+                'success': False,
+                'message': 'No photos match the selected filter criteria',
+                'groups': [],
+                'total_groups': 0,
+                'filtered_count': 0
+            })
         
         # Step 2: Run complete duplicate analysis using existing detection system
         print("🔍 Running comprehensive duplicate analysis...")
@@ -4064,6 +4242,7 @@ def api_analyze_duplicates():
                         'original_filename': getattr(photo, 'original_filename', None),
                         'file_size_bytes': photo.file_size or 0,
                         'quality_score': getattr(photo, 'quality_score', 0.0),
+                        'quality_method': getattr(photo, 'quality_method', 'unknown'),
                         'date_taken': photo.timestamp.isoformat() if photo.timestamp else '',
                         'camera_model': photo.camera_model or 'Unknown'
                     })
