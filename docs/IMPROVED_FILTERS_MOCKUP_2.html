@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mockup 2: Compact Tag-Based Filter Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f8fafc;
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+
+        .mockup-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .mockup-header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .mockup-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .mockup-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 40px;
+        }
+
+        /* Quick Stats Bar */
+        .stats-bar {
+            background: linear-gradient(90deg, #eff6ff, #dbeafe);
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #1e40af;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #1e3a8a;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .active-count {
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .clear-section {
+            color: #6b7280;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+        }
+
+        .clear-section:hover {
+            color: #ef4444;
+        }
+
+        /* Tag-Style Filter Options */
+        .filter-tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .filter-tag {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .filter-tag:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .filter-tag.selected {
+            background: #3b82f6;
+            border-color: #2563eb;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
+        }
+
+        .tag-label {
+            font-size: 0.95rem;
+        }
+
+        .tag-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .filter-tag:not(.selected) .tag-count {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        /* Multi-selection indicator */
+        .filter-tag::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 18px;
+            height: 18px;
+            background: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s ease;
+        }
+
+        .filter-tag.selected::before {
+            content: '✓';
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Specialized filter styles */
+        .priority-high { border-color: #fca5a5; }
+        .priority-high.selected { background: #ef4444; border-color: #dc2626; }
+        .priority-high:hover:not(.selected) { border-color: #ef4444; background: #fef2f2; }
+
+        .priority-medium { border-color: #fed7aa; }
+        .priority-medium.selected { background: #f59e0b; border-color: #d97706; }
+        .priority-medium:hover:not(.selected) { border-color: #f59e0b; background: #fffbeb; }
+
+        .priority-low { border-color: #fde68a; }
+        .priority-low.selected { background: #eab308; border-color: #ca8a04; }
+        .priority-low:hover:not(.selected) { border-color: #eab308; background: #fefce8; }
+
+        .filetype-heic { border-color: #a7f3d0; }
+        .filetype-heic.selected { background: #10b981; border-color: #059669; }
+        .filetype-heic:hover:not(.selected) { border-color: #10b981; background: #ecfdf5; }
+
+        .filetype-jpg { border-color: #bfdbfe; }
+        .filetype-jpg.selected { background: #3b82f6; border-color: #2563eb; }
+        .filetype-jpg:hover:not(.selected) { border-color: #3b82f6; background: #eff6ff; }
+
+        /* Active Filters Summary */
+        .active-filters {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 2px solid #86efac;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .filters-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .selection-summary {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .selection-count {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #065f46;
+        }
+
+        .selection-details {
+            color: #047857;
+            font-weight: 600;
+        }
+
+        .selected-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .selected-filter {
+            background: #059669;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Action Section */
+        .action-section {
+            text-align: center;
+            padding: 30px;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            border-color: #cbd5e0;
+            transform: translateY(-1px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .stats-bar {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Accessibility */
+        .filter-tag:focus {
+            outline: 3px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        .btn:focus {
+            outline: 3px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        /* Loading animation */
+        .loading-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #cbd5e0;
+            animation: loading 1.4s infinite both;
+            margin: 0 2px;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes loading {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-header">
+            <h1>🏷️ Mockup 2: Compact Tag-Based Filters</h1>
+            <p>Streamlined tag interface with color-coded categories and instant feedback</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Quick Stats -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value">12,987</div>
+                    <div class="stat-label">Total Photos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">5.2GB</div>
+                    <div class="stat-label">Library Size</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">1.8GB</div>
+                    <div class="stat-label">Potential Savings</div>
+                </div>
+            </div>
+
+            <!-- Year Filters -->
+            <div class="filter-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        📅 Year
+                        <span class="active-count">1 selected</span>
+                    </div>
+                    <div class="clear-section">Clear all</div>
+                </div>
+                <div class="filter-tags">
+                    <div class="filter-tag">
+                        <span class="tag-label">All Years</span>
+                        <span class="tag-count">12,987</span>
+                    </div>
+                    <div class="filter-tag selected">
+                        <span class="tag-label">2024</span>
+                        <span class="tag-count">3,520</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">2023</span>
+                        <span class="tag-count">2,298</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">2022</span>
+                        <span class="tag-count">1,845</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">2021</span>
+                        <span class="tag-count">1,234</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">Older</span>
+                        <span class="tag-count">4,090</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Priority Filters -->
+            <div class="filter-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        🎯 Duplicate Priority
+                        <span class="active-count">2 selected</span>
+                    </div>
+                    <div class="clear-section">Clear all</div>
+                </div>
+                <div class="filter-tags">
+                    <div class="filter-tag priority-high selected">
+                        <span class="tag-label">P1 High Confidence</span>
+                        <span class="tag-count">97</span>
+                    </div>
+                    <div class="filter-tag priority-medium selected">
+                        <span class="tag-label">P2 Likely Duplicates</span>
+                        <span class="tag-count">1,884</span>
+                    </div>
+                    <div class="filter-tag priority-low">
+                        <span class="tag-label">P3 Possible Duplicates</span>
+                        <span class="tag-count">2,855</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">P4 Unlikely</span>
+                        <span class="tag-count">653</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Type Filters -->
+            <div class="filter-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        📱 File Types
+                        <span class="active-count">1 selected</span>
+                    </div>
+                    <div class="clear-section">Clear all</div>
+                </div>
+                <div class="filter-tags">
+                    <div class="filter-tag">
+                        <span class="tag-label">All Types</span>
+                        <span class="tag-count">12,987</span>
+                    </div>
+                    <div class="filter-tag filetype-heic selected">
+                        <span class="tag-label">HEIC</span>
+                        <span class="tag-count">12,041</span>
+                    </div>
+                    <div class="filter-tag filetype-jpg">
+                        <span class="tag-label">JPG</span>
+                        <span class="tag-count">780</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">PNG</span>
+                        <span class="tag-count">141</span>
+                    </div>
+                    <div class="filter-tag">
+                        <span class="tag-label">Other</span>
+                        <span class="tag-count">25</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Selection Summary -->
+            <div class="active-filters">
+                <div class="filters-summary">
+                    <div class="selection-summary">
+                        <div class="selection-count">2,847</div>
+                        <div class="selection-details">photos match your selection</div>
+                    </div>
+                    <div class="selected-filters">
+                        <div class="selected-filter">📅 2024</div>
+                        <div class="selected-filter">🎯 P1-P2</div>
+                        <div class="selected-filter">📱 HEIC</div>
+                    </div>
+                </div>
+                
+                <!-- Expected Results -->
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div style="color: #047857; font-weight: 600;">
+                        💾 Estimated 1.2GB savings from 156 duplicate groups
+                    </div>
+                    <div style="color: #065f46; font-size: 0.9rem;">
+                        <span class="loading-dot"></span>
+                        <span class="loading-dot"></span>
+                        <span class="loading-dot"></span>
+                        Calculating...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-section">
+                <div class="action-buttons">
+                    <button class="btn btn-primary">
+                        🔍 Analyze Selected Photos
+                    </button>
+                    <button class="btn btn-secondary">
+                        📋 Save Filter Set
+                    </button>
+                    <button class="btn btn-secondary">
+                        🔄 Reset All Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Interactive demo functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Filter tag interactions
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.addEventListener('click', function() {
+                    const section = this.closest('.filter-section');
+                    const isAllOption = this.querySelector('.tag-label').textContent.includes('All');
+                    
+                    if (isAllOption) {
+                        // Clear all other selections in this section
+                        section.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('selected'));
+                        this.classList.add('selected');
+                    } else {
+                        // Toggle this tag
+                        this.classList.toggle('selected');
+                        
+                        // Clear "All" option if it exists
+                        const allOption = Array.from(section.querySelectorAll('.filter-tag'))
+                            .find(t => t.querySelector('.tag-label').textContent.includes('All'));
+                        if (allOption) {
+                            allOption.classList.remove('selected');
+                        }
+                        
+                        // If no selections, select "All"
+                        const selectedTags = section.querySelectorAll('.filter-tag.selected');
+                        if (selectedTags.length === 0 && allOption) {
+                            allOption.classList.add('selected');
+                        }
+                    }
+                    
+                    updateSectionCounts();
+                    updateSelectionSummary();
+                });
+            });
+
+            // Clear section buttons
+            document.querySelectorAll('.clear-section').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const section = this.closest('.filter-section');
+                    
+                    // Clear all selections
+                    section.querySelectorAll('.filter-tag').forEach(tag => {
+                        tag.classList.remove('selected');
+                    });
+                    
+                    // Select the "All" option if it exists
+                    const allOption = Array.from(section.querySelectorAll('.filter-tag'))
+                        .find(tag => tag.querySelector('.tag-label').textContent.includes('All'));
+                    if (allOption) {
+                        allOption.classList.add('selected');
+                    }
+                    
+                    updateSectionCounts();
+                    updateSelectionSummary();
+                });
+            });
+
+            function updateSectionCounts() {
+                document.querySelectorAll('.filter-section').forEach(section => {
+                    const selectedCount = section.querySelectorAll('.filter-tag.selected:not(:has(.tag-label:contains("All")))').length;
+                    const allSelected = section.querySelector('.filter-tag.selected .tag-label') && 
+                        section.querySelector('.filter-tag.selected .tag-label').textContent.includes('All');
+                    
+                    const counter = section.querySelector('.active-count');
+                    if (counter) {
+                        counter.textContent = allSelected ? 'All selected' : `${selectedCount} selected`;
+                    }
+                });
+            }
+
+            function updateSelectionSummary() {
+                // Update photo count (simplified)
+                const photoCount = Math.floor(Math.random() * 3000) + 1500;
+                document.querySelector('.selection-count').textContent = photoCount.toLocaleString();
+                
+                // Update selected filters display
+                const selectedFiltersContainer = document.querySelector('.selected-filters');
+                selectedFiltersContainer.innerHTML = '';
+                
+                document.querySelectorAll('.filter-section').forEach(section => {
+                    const sectionIcon = section.querySelector('.section-title').textContent.split(' ')[0];
+                    const selectedTags = section.querySelectorAll('.filter-tag.selected:not(:has(.tag-label:contains("All")))');
+                    
+                    selectedTags.forEach(tag => {
+                        const label = tag.querySelector('.tag-label').textContent;
+                        const filterDiv = document.createElement('div');
+                        filterDiv.className = 'selected-filter';
+                        filterDiv.textContent = `${sectionIcon} ${label}`;
+                        selectedFiltersContainer.appendChild(filterDiv);
+                    });
+                });
+            }
+
+            // Initialize counts
+            updateSectionCounts();
+            updateSelectionSummary();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Filter Interface with File Size Options</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+
+        .mockup-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .mockup-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .mockup-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .mockup-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Variation Selector */
+        .variation-selector {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 20px 40px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .variation-btn {
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .variation-btn.active {
+            background: #3182ce;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .variation-btn:hover:not(.active) {
+            border-color: #3182ce;
+            background: #eff6ff;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            padding: 40px;
+        }
+
+        .variation-content {
+            display: none;
+        }
+
+        .variation-content.active {
+            display: block;
+        }
+
+        /* Active Filters Summary Bar */
+        .active-filters-summary {
+            background: linear-gradient(90deg, #edf2f7, #f7fafc);
+            border: 2px solid #cbd5e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .filter-summary-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .selection-count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .selection-count .number {
+            color: #3182ce;
+            font-size: 2rem;
+        }
+
+        .active-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            background: #3182ce;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-tag .close-btn {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-tag .close-btn:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
+        .clear-all-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .clear-all-btn:hover {
+            background: #c53030;
+            transform: translateY(-1px);
+        }
+
+        /* Filter Categories Grid */
+        .filter-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .filter-category {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .filter-category:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .category-icon.year { background: #bfdbfe; color: #1d4ed8; }
+        .category-icon.priority { background: #fecaca; color: #dc2626; }
+        .category-icon.filetype { background: #d1fae5; color: #059669; }
+        .category-icon.filesize { background: #fde68a; color: #d97706; }
+
+        .category-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        /* Multi-Select Filter Options */
+        .filter-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .filter-option {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+        }
+
+        .filter-option:hover {
+            border-color: #3182ce;
+            background: #eff6ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .filter-option.selected {
+            background: #3182ce;
+            border-color: #2563eb;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .option-label {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .option-count {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .filter-option.selected .option-count {
+            opacity: 1;
+            font-weight: 600;
+        }
+
+        /* Selection indicator */
+        .filter-option::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            background: #10b981;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s ease;
+        }
+
+        .filter-option.selected::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* FILE SIZE SPECIFIC STYLES */
+        
+        /* Dual-Handle Range Slider */
+        .size-range-container {
+            margin: 20px 0;
+        }
+
+        .size-range-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .size-range-values {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #2d3748;
+        }
+
+        .dual-range-wrapper {
+            position: relative;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 20px;
+            margin: 20px 0;
+        }
+
+        .dual-range-track {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            right: 10px;
+            height: 6px;
+            background: #cbd5e0;
+            border-radius: 3px;
+            transform: translateY(-50%);
+        }
+
+        .dual-range-fill {
+            position: absolute;
+            height: 6px;
+            background: linear-gradient(90deg, #3182ce, #2563eb);
+            border-radius: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+            left: 25%;
+            width: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .range-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .range-thumb {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border: 3px solid #3182ce;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+
+        .range-thumb:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .range-thumb.min { left: 25%; }
+        .range-thumb.max { left: 75%; }
+
+        /* Quintile Buttons */
+        .quintile-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .quintile-btn {
+            padding: 8px 16px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex: 1;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .quintile-btn:hover {
+            border-color: #3182ce;
+            background: #eff6ff;
+        }
+
+        .quintile-btn.active {
+            background: #3182ce;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        /* Variation A: Integrated Slider Card - Full width size card */
+        .size-card-integrated {
+            grid-column: 1 / -1;
+        }
+
+        /* Variation B: Dedicated Size Section */
+        .dedicated-size-section {
+            background: linear-gradient(135deg, #fef7cd 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            grid-column: 1 / -1;
+        }
+
+        .dedicated-size-section .category-header {
+            margin-bottom: 30px;
+        }
+
+        .dedicated-size-section .dual-range-wrapper {
+            height: 50px;
+            margin: 30px 0;
+        }
+
+        .dedicated-size-section .range-thumb {
+            width: 28px;
+            height: 28px;
+            border-width: 4px;
+        }
+
+        .dedicated-size-section .size-range-values {
+            font-size: 1.4rem;
+        }
+
+        /* Variation C: Compact Inline Controls */
+        .compact-size-controls {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .compact-size-controls .dual-range-wrapper {
+            height: 30px;
+            margin: 15px 0;
+        }
+
+        .compact-size-controls .range-thumb {
+            width: 18px;
+            height: 18px;
+            border-width: 2px;
+        }
+
+        .compact-size-controls .quintile-options {
+            margin-top: 10px;
+        }
+
+        .compact-size-controls .quintile-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            min-width: 60px;
+        }
+
+        /* Variation D: Advanced Expandable Panel */
+        .expandable-size-panel {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .panel-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .panel-header:hover {
+            background: #f1f5f9;
+        }
+
+        .panel-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .expand-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .expandable-size-panel.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .panel-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .expandable-size-panel.expanded .panel-content {
+            max-height: 400px;
+        }
+
+        .panel-inner {
+            padding: 30px;
+        }
+
+        /* Results Preview Section */
+        .results-preview {
+            background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
+            border: 2px solid #86efac;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .preview-stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .preview-stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #059669;
+            display: block;
+        }
+
+        .stat-label {
+            color: #065f46;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3182ce;
+            color: white;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+            transform: translateY(-1px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .filter-categories {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-options {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+            
+            .active-filters-summary {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                justify-content: center;
+            }
+
+            .quintile-options {
+                flex-direction: column;
+            }
+
+            .quintile-btn {
+                min-width: auto;
+            }
+        }
+
+        /* Accessibility */
+        .filter-option:focus, .quintile-btn:focus, .variation-btn:focus {
+            outline: 3px solid #3182ce;
+            outline-offset: 2px;
+        }
+
+        .btn:focus {
+            outline: 3px solid #3182ce;
+            outline-offset: 2px;
+        }
+
+        /* Animation for loading states */
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-header">
+            <h1>🎨 Enhanced Filter Interface with File Size Options</h1>
+            <p>Four different approaches to integrating advanced file size filtering</p>
+        </div>
+
+        <!-- Variation Selector -->
+        <div class="variation-selector">
+            <button class="variation-btn active" data-variation="option-a">Option A: Integrated Card</button>
+            <button class="variation-btn" data-variation="option-b">Option B: Dedicated Section</button>
+            <button class="variation-btn" data-variation="option-c">Option C: Compact Inline</button>
+            <button class="variation-btn" data-variation="option-d">Option D: Expandable Panel</button>
+        </div>
+
+        <!-- OPTION A: INTEGRATED SLIDER CARD -->
+        <div class="variation-content active" id="option-a">
+            <div class="main-content">
+                <h2 style="margin-bottom: 20px; color: #2d3748; font-size: 1.5rem;">Option A: Integrated Slider Card</h2>
+                <p style="margin-bottom: 30px; color: #4a5568;">File size controls integrated as another filter card alongside existing filters.</p>
+                
+                <!-- Active Filters Summary -->
+                <div class="active-filters-summary">
+                    <div class="filter-summary-left">
+                        <div class="selection-count">
+                            <span class="number">2,847</span> photos selected
+                        </div>
+                        <div class="active-tags">
+                            <div class="filter-tag">
+                                📅 2024
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                🎯 P1-P2
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📱 HEIC
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📏 5.2MB - 47.8MB
+                                <button class="close-btn">×</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="clear-all-btn">Clear All Filters</button>
+                </div>
+
+                <!-- Filter Categories -->
+                <div class="filter-categories">
+                    <!-- File Size Card (Full Width) -->
+                    <div class="filter-category size-card-integrated">
+                        <div class="category-header">
+                            <div class="category-icon filesize">📏</div>
+                            <div class="category-title">File Size Range</div>
+                        </div>
+                        
+                        <div class="size-range-container">
+                            <div class="size-range-labels">
+                                <span>0 MB</span>
+                                <span>100 MB</span>
+                            </div>
+                            <div class="size-range-values">
+                                5.2 MB - 47.8 MB
+                            </div>
+                            <div class="dual-range-wrapper">
+                                <div class="dual-range-track"></div>
+                                <div class="dual-range-fill"></div>
+                                <div class="range-thumb min"></div>
+                                <div class="range-thumb max"></div>
+                                <input type="range" class="range-input" min="0" max="100" value="5">
+                                <input type="range" class="range-input" min="0" max="100" value="48">
+                            </div>
+                            
+                            <div class="quintile-options">
+                                <button class="quintile-btn">Smallest 20%</button>
+                                <button class="quintile-btn">Small</button>
+                                <button class="quintile-btn active">Medium</button>
+                                <button class="quintile-btn">Large</button>
+                                <button class="quintile-btn">Largest 20%</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Year Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon year">📅</div>
+                            <div class="category-title">Year</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option">
+                                <div class="option-label">All Years</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">2024</div>
+                                <div class="option-count">3,520 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2023</div>
+                                <div class="option-count">2,298 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2022</div>
+                                <div class="option-count">1,845 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2021</div>
+                                <div class="option-count">1,234 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">Older</div>
+                                <div class="option-count">4,090 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Priority Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon priority">🎯</div>
+                            <div class="category-title">Duplicate Priority</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">P1 High</div>
+                                <div class="option-count">97 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">P2 Medium</div>
+                                <div class="option-count">1,884 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P3 Low</div>
+                                <div class="option-count">2,855 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P4 Unlikely</div>
+                                <div class="option-count">653 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Types Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon filetype">📱</div>
+                            <div class="category-title">File Types</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">HEIC</div>
+                                <div class="option-count">12,041 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">JPG</div>
+                                <div class="option-count">780 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">PNG</div>
+                                <div class="option-count">141 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">All Types</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Preview -->
+                <div class="results-preview">
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="stat-number">2,847</span>
+                            <span class="stat-label">Photos Match</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">1.2GB</span>
+                            <span class="stat-label">Potential Savings</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">156</span>
+                            <span class="stat-label">Duplicate Groups</span>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary">
+                            🔍 Analyze Selected Photos
+                        </button>
+                        <button class="btn btn-secondary">
+                            💾 Save Filter Set
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPTION B: DEDICATED SIZE SECTION -->
+        <div class="variation-content" id="option-b">
+            <div class="main-content">
+                <h2 style="margin-bottom: 20px; color: #2d3748; font-size: 1.5rem;">Option B: Dedicated Size Section</h2>
+                <p style="margin-bottom: 30px; color: #4a5568;">Prominent dedicated section for file size controls with larger, more visual emphasis.</p>
+                
+                <!-- Active Filters Summary -->
+                <div class="active-filters-summary">
+                    <div class="filter-summary-left">
+                        <div class="selection-count">
+                            <span class="number">2,847</span> photos selected
+                        </div>
+                        <div class="active-tags">
+                            <div class="filter-tag">
+                                📅 2024
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                🎯 P1-P2
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📱 HEIC
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📏 5.2MB - 47.8MB
+                                <button class="close-btn">×</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="clear-all-btn">Clear All Filters</button>
+                </div>
+
+                <!-- Dedicated File Size Section -->
+                <div class="dedicated-size-section">
+                    <div class="category-header">
+                        <div class="category-icon filesize">📏</div>
+                        <div class="category-title">File Size Filtering</div>
+                    </div>
+                    
+                    <div class="size-range-container">
+                        <div class="size-range-labels">
+                            <span>0 MB</span>
+                            <span>100+ MB</span>
+                        </div>
+                        <div class="size-range-values">
+                            5.2 MB - 47.8 MB
+                        </div>
+                        <div class="dual-range-wrapper">
+                            <div class="dual-range-track"></div>
+                            <div class="dual-range-fill"></div>
+                            <div class="range-thumb min"></div>
+                            <div class="range-thumb max"></div>
+                            <input type="range" class="range-input" min="0" max="100" value="5">
+                            <input type="range" class="range-input" min="0" max="100" value="48">
+                        </div>
+                        
+                        <div class="quintile-options">
+                            <button class="quintile-btn">Smallest 20%<br><small>0-2.1 MB</small></button>
+                            <button class="quintile-btn">Small<br><small>2.1-8.4 MB</small></button>
+                            <button class="quintile-btn active">Medium<br><small>8.4-15.7 MB</small></button>
+                            <button class="quintile-btn">Large<br><small>15.7-35.2 MB</small></button>
+                            <button class="quintile-btn">Largest 20%<br><small>35.2+ MB</small></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other Filter Categories -->
+                <div class="filter-categories">
+                    <!-- Year Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon year">📅</div>
+                            <div class="category-title">Year</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option">
+                                <div class="option-label">All Years</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">2024</div>
+                                <div class="option-count">3,520 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2023</div>
+                                <div class="option-count">2,298 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2022</div>
+                                <div class="option-count">1,845 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2021</div>
+                                <div class="option-count">1,234 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">Older</div>
+                                <div class="option-count">4,090 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Priority Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon priority">🎯</div>
+                            <div class="category-title">Duplicate Priority</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">P1 High</div>
+                                <div class="option-count">97 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">P2 Medium</div>
+                                <div class="option-count">1,884 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P3 Low</div>
+                                <div class="option-count">2,855 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P4 Unlikely</div>
+                                <div class="option-count">653 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Types Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon filetype">📱</div>
+                            <div class="category-title">File Types</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">HEIC</div>
+                                <div class="option-count">12,041 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">JPG</div>
+                                <div class="option-count">780 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">PNG</div>
+                                <div class="option-count">141 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">All Types</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Preview -->
+                <div class="results-preview">
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="stat-number">2,847</span>
+                            <span class="stat-label">Photos Match</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">1.2GB</span>
+                            <span class="stat-label">Potential Savings</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">156</span>
+                            <span class="stat-label">Duplicate Groups</span>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary">
+                            🔍 Analyze Selected Photos
+                        </button>
+                        <button class="btn btn-secondary">
+                            💾 Save Filter Set
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPTION C: COMPACT INLINE CONTROLS -->
+        <div class="variation-content" id="option-c">
+            <div class="main-content">
+                <h2 style="margin-bottom: 20px; color: #2d3748; font-size: 1.5rem;">Option C: Compact Inline Controls</h2>
+                <p style="margin-bottom: 30px; color: #4a5568;">Compact integration that doesn't dominate the interface while providing full functionality.</p>
+                
+                <!-- Active Filters Summary -->
+                <div class="active-filters-summary">
+                    <div class="filter-summary-left">
+                        <div class="selection-count">
+                            <span class="number">2,847</span> photos selected
+                        </div>
+                        <div class="active-tags">
+                            <div class="filter-tag">
+                                📅 2024
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                🎯 P1-P2
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📱 HEIC
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📏 5.2MB - 47.8MB
+                                <button class="close-btn">×</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="clear-all-btn">Clear All Filters</button>
+                </div>
+
+                <!-- Filter Categories -->
+                <div class="filter-categories">
+                    <!-- Year Filter with Compact Size Controls -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon year">📅</div>
+                            <div class="category-title">Year</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option">
+                                <div class="option-label">All Years</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">2024</div>
+                                <div class="option-count">3,520 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2023</div>
+                                <div class="option-count">2,298 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2022</div>
+                                <div class="option-count">1,845 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2021</div>
+                                <div class="option-count">1,234 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">Older</div>
+                                <div class="option-count">4,090 photos</div>
+                            </div>
+                        </div>
+
+                        <!-- Compact Size Controls -->
+                        <div class="compact-size-controls">
+                            <div style="font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                <span style="background: #fde68a; padding: 4px 8px; border-radius: 4px;">📏</span>
+                                File Size: <strong>5.2 MB - 47.8 MB</strong>
+                            </div>
+                            <div class="dual-range-wrapper">
+                                <div class="dual-range-track"></div>
+                                <div class="dual-range-fill"></div>
+                                <div class="range-thumb min"></div>
+                                <div class="range-thumb max"></div>
+                                <input type="range" class="range-input" min="0" max="100" value="5">
+                                <input type="range" class="range-input" min="0" max="100" value="48">
+                            </div>
+                            <div class="quintile-options">
+                                <button class="quintile-btn">Smallest</button>
+                                <button class="quintile-btn">Small</button>
+                                <button class="quintile-btn active">Med</button>
+                                <button class="quintile-btn">Large</button>
+                                <button class="quintile-btn">Largest</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Priority Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon priority">🎯</div>
+                            <div class="category-title">Duplicate Priority</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">P1 High</div>
+                                <div class="option-count">97 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">P2 Medium</div>
+                                <div class="option-count">1,884 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P3 Low</div>
+                                <div class="option-count">2,855 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P4 Unlikely</div>
+                                <div class="option-count">653 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Types Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon filetype">📱</div>
+                            <div class="category-title">File Types</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">HEIC</div>
+                                <div class="option-count">12,041 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">JPG</div>
+                                <div class="option-count">780 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">PNG</div>
+                                <div class="option-count">141 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">All Types</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Preview -->
+                <div class="results-preview">
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="stat-number">2,847</span>
+                            <span class="stat-label">Photos Match</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">1.2GB</span>
+                            <span class="stat-label">Potential Savings</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">156</span>
+                            <span class="stat-label">Duplicate Groups</span>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary">
+                            🔍 Analyze Selected Photos
+                        </button>
+                        <button class="btn btn-secondary">
+                            💾 Save Filter Set
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPTION D: ADVANCED EXPANDABLE PANEL -->
+        <div class="variation-content" id="option-d">
+            <div class="main-content">
+                <h2 style="margin-bottom: 20px; color: #2d3748; font-size: 1.5rem;">Option D: Advanced Expandable Panel</h2>
+                <p style="margin-bottom: 30px; color: #4a5568;">Collapsible advanced controls that keep the main interface clean while providing power-user options.</p>
+                
+                <!-- Active Filters Summary -->
+                <div class="active-filters-summary">
+                    <div class="filter-summary-left">
+                        <div class="selection-count">
+                            <span class="number">2,847</span> photos selected
+                        </div>
+                        <div class="active-tags">
+                            <div class="filter-tag">
+                                📅 2024
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                🎯 P1-P2
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📱 HEIC
+                                <button class="close-btn">×</button>
+                            </div>
+                            <div class="filter-tag">
+                                📏 5.2MB - 47.8MB
+                                <button class="close-btn">×</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="clear-all-btn">Clear All Filters</button>
+                </div>
+
+                <!-- Advanced File Size Panel -->
+                <div class="expandable-size-panel expanded">
+                    <div class="panel-header">
+                        <h3>
+                            <span style="background: #fde68a; color: #d97706; padding: 8px; border-radius: 8px; font-size: 1rem;">📏</span>
+                            Advanced File Size Filters
+                        </h3>
+                        <div class="expand-icon">▼</div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="panel-inner">
+                            <div class="size-range-container">
+                                <div class="size-range-labels">
+                                    <span>0 MB (Smallest Files)</span>
+                                    <span>100+ MB (Largest Files)</span>
+                                </div>
+                                <div class="size-range-values">
+                                    Current Range: 5.2 MB - 47.8 MB
+                                </div>
+                                <div class="dual-range-wrapper">
+                                    <div class="dual-range-track"></div>
+                                    <div class="dual-range-fill"></div>
+                                    <div class="range-thumb min"></div>
+                                    <div class="range-thumb max"></div>
+                                    <input type="range" class="range-input" min="0" max="100" value="5">
+                                    <input type="range" class="range-input" min="0" max="100" value="48">
+                                </div>
+                                
+                                <div style="margin: 20px 0; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                                    <strong>Quick Select by Library Distribution:</strong>
+                                </div>
+                                
+                                <div class="quintile-options">
+                                    <button class="quintile-btn">
+                                        <strong>Smallest 20%</strong><br>
+                                        <small>0 - 2.1 MB</small><br>
+                                        <small style="color: #059669;">2,597 photos</small>
+                                    </button>
+                                    <button class="quintile-btn">
+                                        <strong>Small</strong><br>
+                                        <small>2.1 - 8.4 MB</small><br>
+                                        <small style="color: #059669;">2,598 photos</small>
+                                    </button>
+                                    <button class="quintile-btn active">
+                                        <strong>Medium</strong><br>
+                                        <small>8.4 - 15.7 MB</small><br>
+                                        <small style="color: #059669;">2,597 photos</small>
+                                    </button>
+                                    <button class="quintile-btn">
+                                        <strong>Large</strong><br>
+                                        <small>15.7 - 35.2 MB</small><br>
+                                        <small style="color: #059669;">2,598 photos</small>
+                                    </button>
+                                    <button class="quintile-btn">
+                                        <strong>Largest 20%</strong><br>
+                                        <small>35.2+ MB</small><br>
+                                        <small style="color: #059669;">2,597 photos</small>
+                                    </button>
+                                </div>
+
+                                <div style="margin-top: 20px; padding: 10px; background: #fefce8; border-radius: 6px; font-size: 0.9rem; color: #854d0e;">
+                                    💡 <strong>Tip:</strong> Size-based filtering is especially useful for identifying large duplicate files that offer the most storage savings when removed.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Categories -->
+                <div class="filter-categories">
+                    <!-- Year Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon year">📅</div>
+                            <div class="category-title">Year</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option">
+                                <div class="option-label">All Years</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">2024</div>
+                                <div class="option-count">3,520 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2023</div>
+                                <div class="option-count">2,298 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2022</div>
+                                <div class="option-count">1,845 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">2021</div>
+                                <div class="option-count">1,234 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">Older</div>
+                                <div class="option-count">4,090 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Priority Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon priority">🎯</div>
+                            <div class="category-title">Duplicate Priority</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">P1 High</div>
+                                <div class="option-count">97 photos</div>
+                            </div>
+                            <div class="filter-option selected">
+                                <div class="option-label">P2 Medium</div>
+                                <div class="option-count">1,884 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P3 Low</div>
+                                <div class="option-count">2,855 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">P4 Unlikely</div>
+                                <div class="option-count">653 photos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Types Filter -->
+                    <div class="filter-category">
+                        <div class="category-header">
+                            <div class="category-icon filetype">📱</div>
+                            <div class="category-title">File Types</div>
+                        </div>
+                        <div class="filter-options">
+                            <div class="filter-option selected">
+                                <div class="option-label">HEIC</div>
+                                <div class="option-count">12,041 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">JPG</div>
+                                <div class="option-count">780 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">PNG</div>
+                                <div class="option-count">141 photos</div>
+                            </div>
+                            <div class="filter-option">
+                                <div class="option-label">All Types</div>
+                                <div class="option-count">12,987 photos</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Preview -->
+                <div class="results-preview">
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="stat-number">2,847</span>
+                            <span class="stat-label">Photos Match</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">1.2GB</span>
+                            <span class="stat-label">Potential Savings</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-number">156</span>
+                            <span class="stat-label">Duplicate Groups</span>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary">
+                            🔍 Analyze Selected Photos
+                        </button>
+                        <button class="btn btn-secondary">
+                            💾 Save Filter Set
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variation switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Variation selector buttons
+            document.querySelectorAll('.variation-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const variation = this.dataset.variation;
+                    
+                    // Update button states
+                    document.querySelectorAll('.variation-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Update content visibility
+                    document.querySelectorAll('.variation-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(variation).classList.add('active');
+                });
+            });
+
+            // Expandable panel functionality
+            document.querySelectorAll('.panel-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const panel = this.closest('.expandable-size-panel');
+                    panel.classList.toggle('expanded');
+                });
+            });
+
+            // Multi-select filter options (same as original)
+            document.querySelectorAll('.filter-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    if (this.querySelector('.option-label').textContent.includes('All')) {
+                        const category = this.closest('.filter-category');
+                        category.querySelectorAll('.filter-option').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        this.classList.add('selected');
+                    } else {
+                        this.classList.toggle('selected');
+                        
+                        const category = this.closest('.filter-category');
+                        const allOption = Array.from(category.querySelectorAll('.filter-option'))
+                            .find(opt => opt.querySelector('.option-label').textContent.includes('All'));
+                        if (allOption) {
+                            allOption.classList.remove('selected');
+                        }
+                        
+                        const selectedOptions = category.querySelectorAll('.filter-option.selected');
+                        if (selectedOptions.length === 0 && allOption) {
+                            allOption.classList.add('selected');
+                        }
+                    }
+                    
+                    updateActiveFiltersDisplay();
+                    updateResultsPreview();
+                });
+            });
+
+            // Quintile button functionality
+            document.querySelectorAll('.quintile-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active from siblings
+                    this.closest('.quintile-options').querySelectorAll('.quintile-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    
+                    // Make this one active
+                    this.classList.add('active');
+                    
+                    // Update size range display (demo)
+                    const container = this.closest('.size-range-container') || this.closest('.compact-size-controls') || this.closest('.panel-inner');
+                    const values = container.querySelector('.size-range-values') || container.querySelector('strong');
+                    
+                    // Demo values for different quintiles
+                    const ranges = {
+                        'Smallest': '0.1 MB - 2.1 MB',
+                        'Small': '2.1 MB - 8.4 MB', 
+                        'Medium': '8.4 MB - 15.7 MB',
+                        'Large': '15.7 MB - 35.2 MB',
+                        'Largest': '35.2 MB - 98.5 MB',
+                        'Med': '8.4 MB - 15.7 MB'
+                    };
+                    
+                    const label = this.textContent.split('\n')[0].replace('20%', '').trim();
+                    if (ranges[label] && values) {
+                        if (values.tagName === 'STRONG') {
+                            values.textContent = ranges[label];
+                        } else {
+                            values.textContent = ranges[label];
+                        }
+                    }
+                    
+                    updateActiveFiltersDisplay();
+                    updateResultsPreview();
+                });
+            });
+
+            // Close buttons on filter tags
+            document.querySelectorAll('.filter-tag .close-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    this.closest('.filter-tag').remove();
+                    updateResultsPreview();
+                });
+            });
+
+            // Clear all button
+            document.querySelectorAll('.clear-all-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove all selected states
+                    document.querySelectorAll('.filter-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Select all "All" options
+                    document.querySelectorAll('.filter-option').forEach(opt => {
+                        if (opt.querySelector('.option-label').textContent.includes('All')) {
+                            opt.classList.add('selected');
+                        }
+                    });
+                    
+                    // Reset quintile selections
+                    document.querySelectorAll('.quintile-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    document.querySelectorAll('.quintile-btn').forEach(btn => {
+                        if (btn.textContent.includes('Medium')) {
+                            btn.classList.add('active');
+                        }
+                    });
+                    
+                    // Clear active tags
+                    document.querySelectorAll('.active-tags').forEach(tags => {
+                        tags.innerHTML = '';
+                    });
+                    
+                    // Reset size range displays
+                    document.querySelectorAll('.size-range-values').forEach(values => {
+                        values.textContent = '5.2 MB - 47.8 MB';
+                    });
+                    
+                    updateActiveFiltersDisplay();
+                    updateResultsPreview();
+                });
+            });
+
+            // Simulated dual-handle range slider functionality
+            document.querySelectorAll('.dual-range-wrapper').forEach(wrapper => {
+                const minThumb = wrapper.querySelector('.range-thumb.min');
+                const maxThumb = wrapper.querySelector('.range-thumb.max');
+                const fill = wrapper.querySelector('.dual-range-fill');
+                
+                let isDragging = false;
+                let currentThumb = null;
+                
+                function updateSlider(minValue, maxValue) {
+                    const minPercent = minValue;
+                    const maxPercent = maxValue;
+                    
+                    if (minThumb) minThumb.style.left = minPercent + '%';
+                    if (maxThumb) maxThumb.style.left = maxPercent + '%';
+                    if (fill) {
+                        fill.style.left = minPercent + '%';
+                        fill.style.width = (maxPercent - minPercent) + '%';
+                    }
+                    
+                    // Update display values
+                    const container = wrapper.closest('.size-range-container') || wrapper.closest('.compact-size-controls') || wrapper.closest('.panel-inner');
+                    const values = container?.querySelector('.size-range-values') || container?.querySelector('strong');
+                    if (values) {
+                        const minMB = (minValue * 1).toFixed(1);
+                        const maxMB = (maxValue * 1).toFixed(1);
+                        if (values.tagName === 'STRONG') {
+                            values.textContent = `${minMB} MB - ${maxMB} MB`;
+                        } else {
+                            values.textContent = `${minMB} MB - ${maxMB} MB`;
+                        }
+                    }
+                }
+                
+                // Initialize positions
+                updateSlider(25, 75);
+            });
+
+            function updateActiveFiltersDisplay() {
+                // Update selection count (simplified for demo)
+                document.querySelectorAll('.selection-count .number').forEach(counter => {
+                    counter.textContent = Math.floor(Math.random() * 3000) + 1500;
+                });
+            }
+
+            function updateResultsPreview() {
+                // Update results preview (simplified for demo)
+                document.querySelectorAll('.stat-number').forEach((stat, index) => {
+                    if (index === 0) stat.textContent = Math.floor(Math.random() * 5000) + 1000; // Photos
+                    if (index === 1) stat.textContent = (Math.random() * 3 + 0.5).toFixed(1) + 'GB'; // Savings
+                    if (index === 2) stat.textContent = Math.floor(Math.random() * 200) + 50; // Groups
+                });
+            }
+        });
+    </script>
+</body>
+</html>

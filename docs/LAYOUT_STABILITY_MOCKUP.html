@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layout Stability Solution - Photo Dedup Legacy Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .mockup-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .mockup-header {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .mockup-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .comparison-section {
+            padding: 40px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        /* BEFORE/AFTER COMPARISON */
+        .before-after-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .demo-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 30px;
+            border: 2px solid #e2e8f0;
+            min-height: 600px;
+        }
+
+        .demo-section.before {
+            border-color: #fed7d7;
+            background: #fef5f5;
+        }
+
+        .demo-section.after {
+            border-color: #c6f6d5;
+            background: #f0fff4;
+        }
+
+        .demo-label {
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .demo-section.before .demo-label {
+            color: #c53030;
+            background: rgba(197, 48, 48, 0.1);
+        }
+
+        .demo-section.after .demo-label {
+            color: #38a169;
+            background: rgba(56, 161, 105, 0.1);
+        }
+
+        /* SIMULATED PAGE LAYOUT */
+        .simulated-page {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        .page-header {
+            background: #2196F3;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* CURRENT PROBLEMATIC APPROACH */
+        .dynamic-summary {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            animation: slideDown 0.3s ease-out;
+            transform-origin: top;
+        }
+
+        .dynamic-summary.hidden {
+            display: none;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: scaleY(0);
+            }
+            to {
+                opacity: 1;
+                transform: scaleY(1);
+            }
+        }
+
+        /* FIXED-HEIGHT SOLUTION */
+        .fixed-summary-container {
+            height: 120px; /* Fixed height regardless of content */
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .fixed-summary {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 16px;
+            height: 100%;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .fixed-summary.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .fixed-summary.empty-state {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        /* PHOTO CARDS SIMULATION */
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .photo-card-sim {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .photo-card-sim:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .photo-placeholder {
+            background: #e9ecef;
+            height: 120px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            color: #6c757d;
+        }
+
+        .photo-filename {
+            font-size: 0.9rem;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .select-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .select-button:hover {
+            background: #c82333;
+        }
+
+        .photo-card-sim.selected {
+            border-color: #dc3545;
+            background: rgba(220, 53, 69, 0.05);
+        }
+
+        /* DEMO CONTROLS */
+        .demo-controls {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .demo-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .demo-button:hover {
+            background: #0056b3;
+        }
+
+        /* LAYOUT SHIFT INDICATOR */
+        .shift-indicator {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #dc3545;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .no-shift-indicator {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* MOBILE RESPONSIVE ADAPTATIONS */
+        @media (max-width: 768px) {
+            .before-after-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .photos-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .fixed-summary-container {
+                height: 140px; /* Slightly taller on mobile */
+            }
+        }
+
+        /* IMPLEMENTATION NOTES SECTION */
+        .implementation-notes {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 30px;
+            margin-top: 40px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .implementation-notes h3 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .highlight {
+            background: rgba(56, 161, 105, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .problem-highlight {
+            background: rgba(220, 53, 69, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-header">
+            <h1>🎯 Layout Stability Solution</h1>
+            <p>Fixing vertical layout shifts in photo selection summary</p>
+        </div>
+
+        <div class="comparison-section">
+            <h2 class="section-title">Current Problem vs. Fixed Solution</h2>
+            
+            <div class="before-after-grid">
+                <!-- BEFORE: Current Problematic Approach -->
+                <div class="demo-section before">
+                    <div class="demo-label">❌ Current: Unstable Layout</div>
+                    
+                    <div class="demo-controls">
+                        <button class="demo-button" onclick="toggleDynamicSummary()">
+                            Toggle Selection Summary
+                        </button>
+                        <div style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                            Watch photos jump when summary appears/disappears
+                        </div>
+                    </div>
+
+                    <div class="simulated-page">
+                        <div class="page-header">Photo Deduplication Tool</div>
+                        
+                        <div class="dynamic-summary hidden" id="dynamicSummary">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 1.5rem; margin-right: 8px;">⚠️</span>
+                                <strong>DELETION SUMMARY</strong>
+                            </div>
+                            <div>
+                                <strong>3 photos</strong> from <strong>2 groups</strong> marked for deletion
+                            </div>
+                        </div>
+                        
+                        <div class="photos-grid">
+                            <div class="photo-card-sim">
+                                <div class="photo-placeholder">📸 Photo 1</div>
+                                <div class="photo-filename">IMG_1234.HEIC</div>
+                                <button class="select-button">Mark for Deletion</button>
+                            </div>
+                            <div class="photo-card-sim">
+                                <div class="photo-placeholder">📸 Photo 2</div>
+                                <div class="photo-filename">IMG_1235.HEIC</div>
+                                <button class="select-button">Mark for Deletion</button>
+                            </div>
+                        </div>
+                        <div class="shift-indicator" id="shiftIndicator" style="display: none;">LAYOUT SHIFT!</div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; color: #c53030; font-size: 0.95rem;">
+                        <strong>Problems:</strong><br>
+                        • Photos jump down when summary appears<br>
+                        • Photos jump up when summary disappears<br>
+                        • User loses visual focus<br>
+                        • Jarring, unprofessional experience
+                    </div>
+                </div>
+
+                <!-- AFTER: Fixed Solution -->
+                <div class="demo-section after">
+                    <div class="demo-label">✅ Solution: Stable Layout</div>
+                    
+                    <div class="demo-controls">
+                        <button class="demo-button" onclick="toggleFixedSummary()">
+                            Toggle Selection Summary
+                        </button>
+                        <div style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                            Notice: Photos stay in same position
+                        </div>
+                    </div>
+
+                    <div class="simulated-page">
+                        <div class="page-header">Photo Deduplication Tool</div>
+                        
+                        <div class="fixed-summary-container">
+                            <div class="fixed-summary empty-state" id="fixedSummary">
+                                No photos selected
+                            </div>
+                        </div>
+                        
+                        <div class="photos-grid">
+                            <div class="photo-card-sim">
+                                <div class="photo-placeholder">📸 Photo 1</div>
+                                <div class="photo-filename">IMG_1234.HEIC</div>
+                                <button class="select-button">Mark for Deletion</button>
+                            </div>
+                            <div class="photo-card-sim">
+                                <div class="photo-placeholder">📸 Photo 2</div>
+                                <div class="photo-filename">IMG_1235.HEIC</div>
+                                <button class="select-button">Mark for Deletion</button>
+                            </div>
+                        </div>
+                        <div class="no-shift-indicator">STABLE LAYOUT</div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; color: #38a169; font-size: 0.95rem;">
+                        <strong>Benefits:</strong><br>
+                        • Fixed height prevents layout shifts<br>
+                        • Smooth opacity transitions<br>
+                        • Professional, stable experience<br>
+                        • Users maintain visual focus
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMPLEMENTATION DETAILS -->
+            <div class="implementation-notes">
+                <h3>🛠️ Implementation Strategy</h3>
+                
+                <h4 style="color: #007bff; margin: 20px 0 10px 0;">1. Fixed Container Height</h4>
+                <div class="code-block">
+.selection-summary-container {
+    <span class="highlight">height: 120px;</span>  /* Fixed height - key solution */
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.selection-summary {
+    height: 100%;
+    padding: 16px;
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    <span class="highlight">opacity: 0;</span>  /* Hidden by default */
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.selection-summary.visible {
+    <span class="highlight">opacity: 1;</span>  /* Smooth fade in */
+    transform: translateY(0);
+}
+
+.selection-summary.empty {
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-style: italic;
+}
+                </div>
+
+                <h4 style="color: #007bff; margin: 20px 0 10px 0;">2. JavaScript State Management</h4>
+                <div class="code-block">
+function updateSelectionSummary() {
+    const container = document.getElementById('selectionSummaryContainer');
+    const summary = document.getElementById('selectionSummary');
+    
+    if (totalPhotosToDelete > 0) {
+        // Show content with fade transition
+        summary.innerHTML = generateSummaryContent();
+        <span class="highlight">summary.classList.remove('empty');</span>
+        <span class="highlight">summary.classList.add('visible');</span>
+    } else {
+        // Show empty state
+        summary.innerHTML = 'No photos selected for deletion';
+        <span class="highlight">summary.classList.add('empty');</span>
+        <span class="highlight">summary.classList.remove('visible');</span>
+    }
+    // Container height NEVER changes - no layout shift
+}
+                </div>
+
+                <h4 style="color: #007bff; margin: 20px 0 10px 0;">3. Responsive Considerations</h4>
+                <div class="code-block">
+@media (max-width: 768px) {
+    .selection-summary-container {
+        <span class="highlight">height: 140px;</span>  /* Slightly taller for mobile */
+    }
+    
+    .selection-summary {
+        font-size: 0.9rem;  /* Adjust text size */
+        padding: 12px;      /* Adjust padding */
+    }
+}
+
+@media (max-width: 480px) {
+    .selection-summary-container {
+        <span class="highlight">height: 160px;</span>  /* More height for narrow screens */
+    }
+}
+                </div>
+
+                <h4 style="color: #007bff; margin: 20px 0 10px 0;">4. Accessibility Enhancements</h4>
+                <div class="code-block">
+.selection-summary {
+    /* Screen reader support */
+    <span class="highlight">aria-live="polite";</span>
+    <span class="highlight">aria-atomic="true";</span>
+}
+
+.selection-summary.empty {
+    /* Indicate empty state to screen readers */
+    <span class="highlight">aria-label="No photos currently selected";</span>
+}
+
+/* Focus management for keyboard users */
+.selection-summary.visible {
+    <span class="highlight">scroll-margin-top: 20px;</span>
+}
+                </div>
+
+                <div style="background: #e7f3ff; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                    <h4 style="color: #0066cc; margin-bottom: 10px;">🎯 Key Implementation Points</h4>
+                    <ul style="color: #0066cc; padding-left: 20px;">
+                        <li><strong>Never use display: none/block</strong> - Use opacity and fixed height instead</li>
+                        <li><strong>Reserve vertical space</strong> - Container maintains consistent height</li>
+                        <li><strong>Smooth transitions</strong> - Use opacity and transform for professional feel</li>
+                        <li><strong>Empty state design</strong> - Show helpful placeholder when no selections</li>
+                        <li><strong>Mobile responsive</strong> - Adjust container height for different screen sizes</li>
+                        <li><strong>Performance</strong> - CSS transitions are GPU-accelerated</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality for the mockup
+        function toggleDynamicSummary() {
+            const summary = document.getElementById('dynamicSummary');
+            const indicator = document.getElementById('shiftIndicator');
+            
+            if (summary.classList.contains('hidden')) {
+                summary.classList.remove('hidden');
+                indicator.style.display = 'block';
+                setTimeout(() => indicator.style.display = 'none', 2000);
+            } else {
+                summary.classList.add('hidden');
+                indicator.style.display = 'block';
+                setTimeout(() => indicator.style.display = 'none', 2000);
+            }
+        }
+
+        function toggleFixedSummary() {
+            const summary = document.getElementById('fixedSummary');
+            
+            if (summary.classList.contains('visible')) {
+                // Hide content - show empty state
+                summary.classList.remove('visible');
+                summary.classList.add('empty-state');
+                summary.innerHTML = 'No photos selected';
+            } else {
+                // Show content
+                summary.classList.remove('empty-state');
+                summary.classList.add('visible');
+                summary.innerHTML = `
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 1.5rem; margin-right: 8px;">⚠️</span>
+                        <strong>DELETION SUMMARY</strong>
+                    </div>
+                    <div>
+                        <strong>3 photos</strong> from <strong>2 groups</strong> marked for deletion
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-demo on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show the fixed summary after a short delay for demonstration
+            setTimeout(() => toggleFixedSummary(), 1500);
+        });
+    </script>
+</body>
+</html>

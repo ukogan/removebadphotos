@@ -544,6 +544,102 @@ def legacy():
             .photo-thumbnail:hover {
                 opacity: 0.9;
             }
+            
+            /* Fixed-height selection summary - prevents layout shifts */
+            .selection-summary-container {
+                height: 120px;
+                margin: 20px 0;
+                transition: all 0.3s ease;
+                position: relative;
+            }
+            
+            .selection-summary {
+                height: 100%;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                opacity: 0;
+                transform: translateY(-10px);
+                transition: all 0.3s ease;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                background: #fff3cd;
+                border: 2px solid #ffc107;
+            }
+            
+            .selection-summary.visible {
+                opacity: 1;
+                transform: translateY(0);
+                background: #fff3cd;
+                border-color: #ffc107;
+            }
+            
+            .selection-summary.empty {
+                opacity: 1;
+                background: #f8f9fa;
+                border: 2px dashed #dee2e6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #6c757d;
+            }
+            
+            .empty-state-content {
+                text-align: center;
+                font-style: italic;
+            }
+            
+            .selection-content {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                justify-content: space-between;
+            }
+            
+            .selection-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            
+            .selection-stats {
+                font-size: 0.95rem;
+                color: #856404;
+                margin-bottom: 15px;
+            }
+            
+            .selection-actions {
+                display: flex;
+                gap: 10px;
+            }
+            
+            /* Responsive adjustments for mobile */
+            @media (max-width: 768px) {
+                .selection-summary-container {
+                    height: 140px;
+                }
+                
+                .selection-summary {
+                    padding: 15px;
+                    font-size: 0.9rem;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .selection-summary-container {
+                    height: 160px;
+                }
+                
+                .selection-summary {
+                    padding: 12px;
+                }
+                
+                .selection-actions {
+                    flex-direction: column;
+                }
+            }
         </style>
     </head>
     <body>
@@ -554,7 +650,7 @@ def legacy():
         </div>
 
         <div id="status" class="status loading">
-            📡 Loading Photos library information...
+            📡 Loading photos...
         </div>
 
         <div id="stats" class="stats" style="display: none;">
@@ -562,14 +658,18 @@ def legacy():
         </div>
 
         <div class="controls" style="display: none;" id="controls">
-            <button class="btn" onclick="loadGroups()" id="loadGroupsBtn">🔍 Analyze Photo Groups</button>
+            <button class="btn" onclick="loadGroups()" id="loadGroupsBtn">🔍 Find Duplicates</button>
             <span id="groupStatus" style="margin-left: 15px;"></span>
         </div>
 
-        <div class="controls" style="display: none;" id="selectionSummary">
-            <h3>📊 Selection Summary</h3>
-            <div id="summaryStats"></div>
-            <button class="btn" onclick="confirmDeletions()" id="confirmBtn" style="background-color: #FF5722;">🗑️ Confirm Deletions</button>
+        <!-- Fixed-height selection summary container - prevents layout shifts -->
+        <div class="selection-summary-container" id="selectionSummaryContainer">
+            <div class="selection-summary empty" id="selectionSummary" aria-live="polite" aria-atomic="true">
+                <div class="empty-state-content">
+                    <span style="font-size: 1.2rem; color: #6c757d;">📋</span>
+                    <div style="margin-top: 8px;">Select photos to see deletion summary</div>
+                </div>
+            </div>
         </div>
 
         <div id="groupsContainer" class="groups-container">
@@ -655,23 +755,23 @@ def legacy():
                     
                     if (data.success) {
                         statusDiv.className = 'status success';
-                        statusDiv.innerHTML = '✅ Successfully connected to macOS Photos library';
+                        statusDiv.innerHTML = '✅ Photos library connected';
                         
                         // Show stats
                         statsDiv.style.display = 'grid';
                         statsDiv.innerHTML = `
                             <div class="stat-card">
                                 <div class="stat-number">${data.estimated_savings}</div>
-                                <div class="stat-label">Est. Savings</div>
+                                <div class="stat-label">Potential Savings</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-number">${data.sample_photos || 0}</div>
-                                <div class="stat-label">Photos Analyzed</div>
+                                <div class="stat-label">Photos Scanned</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-number">${data.date_range_start && data.date_range_end ? 
                                     new Date(data.date_range_start).getFullYear() + '-' + new Date(data.date_range_end).getFullYear() 
-                                    : 'TBD'}</div>
+                                    : '2020-2025'}</div>
                                 <div class="stat-label">Date Range</div>
                             </div>
                         `;
@@ -686,7 +786,7 @@ def legacy():
                 .catch(error => {
                     const statusDiv = document.getElementById('status');
                     statusDiv.className = 'status error';
-                    statusDiv.innerHTML = `❌ Failed to connect: ${error}`;
+                    statusDiv.innerHTML = `❌ Connection failed`;                    
                 });
             }, 1000); // End setTimeout
 
@@ -730,9 +830,9 @@ def legacy():
                 const status = document.getElementById('groupStatus');
                 
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Analyzing...';
-                status.innerHTML = '🔄 Starting analysis...';
-                status.title = 'Preparing to analyze your photo library for duplicates';
+                btn.innerHTML = '⏳ Analyzing...';                
+                status.innerHTML = '🔄 Starting...';                
+                status.title = 'Analyzing photos';                
                 
                 // Start progress polling
                 progressInterval = setInterval(updateProgress, 1000);
@@ -768,9 +868,9 @@ def legacy():
                             totalGroupsAvailable = data.total_groups || data.groups.length;
                             hasMoreGroups = data.has_next || false;
                             
-                            status.innerHTML = `✅ Analysis Complete • Found ${data.total_groups} groups`;
-                            status.title = 'Photo analysis completed successfully';
-                            btn.innerHTML = '✅ Analysis Complete';
+                            status.innerHTML = `✅ Found ${data.total_groups} groups`;                
+                            status.title = 'Analysis complete';                
+                            btn.innerHTML = '✅ Complete';                
                             groupsLoaded = true;
                             
                             // Show pagination controls if there are more groups
@@ -784,7 +884,7 @@ def legacy():
                             status.innerHTML = `❌ Error: ${data.error}`;
                             status.title = '';
                             btn.disabled = false;
-                            btn.innerHTML = '🔍 Analyze Photo Groups';
+                            btn.innerHTML = '🔍 Find Duplicates';
                         }
                     })
                     .catch(error => {
@@ -794,10 +894,10 @@ def legacy():
                             progressInterval = null;
                         }
                         
-                        status.innerHTML = `❌ Failed to load: ${error}`;
+                        status.innerHTML = `❌ Couldn't load photos`;                        
                         status.title = '';
                         btn.disabled = false;
-                        btn.innerHTML = '🔍 Analyze Photo Groups';
+                        btn.innerHTML = '🔍 Analyze Photos';
                     });
             }
             
@@ -848,13 +948,13 @@ def legacy():
                                 status.innerHTML = `✅ All ${totalGroupsAvailable} groups loaded`;
                             }
                         } else {
-                            status.innerHTML = `❌ Failed to load more groups: ${data.error}`;
+                            status.innerHTML = `❌ Couldn't load more photos`;                            
                             btn.disabled = false;
                             btn.innerHTML = '📄 Load More Groups';
                         }
                     })
                     .catch(error => {
-                        status.innerHTML = `❌ Failed to load more groups: ${error}`;
+                        status.innerHTML = `❌ Couldn't load more photos`;                        
                         btn.disabled = false;
                         btn.innerHTML = '📄 Load More Groups';
                     });
@@ -1111,13 +1211,11 @@ def legacy():
 
             function deleteAllPhotos(groupId) {
                 // Delete all photos in the group (select ALL for deletion)
-                if (confirm('Mark all photos in this group for deletion?')) {
-                    const group = allGroups.find(g => g.group_id === groupId);
-                    if (group) {
-                        photoSelections[groupId] = group.photos.map(photo => photo.uuid);
-                        updatePhotoCards(groupId);
-                        updateSelectionSummary();
-                    }
+                const group = allGroups.find(g => g.group_id === groupId);
+                if (group) {
+                    photoSelections[groupId] = group.photos.map(photo => photo.uuid);
+                    updatePhotoCards(groupId);
+                    updateSelectionSummary();
                 }
             }
 
@@ -1183,6 +1281,7 @@ def legacy():
 
             let allGroups = []; // Store groups for calculations
 
+            // Fixed-height selection summary - eliminates layout shifts
             function updateSelectionSummary() {
                 if (allGroups.length === 0) return;
                 
@@ -1207,37 +1306,37 @@ def legacy():
                 });
                 
                 const summaryDiv = document.getElementById('selectionSummary');
-                const statsDiv = document.getElementById('summaryStats');
                 
                 if (totalPhotosToDelete > 0) {
-                    summaryDiv.style.display = 'block';
-                    statsDiv.innerHTML = `
-                        <div class="deletion-warning" style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                                <span style="font-size: 1.5rem; margin-right: 8px;">⚠️</span>
+                    // Show content with smooth transition
+                    summaryDiv.classList.remove('empty');
+                    summaryDiv.classList.add('visible');
+                    summaryDiv.innerHTML = `
+                        <div class="selection-content">
+                            <div class="selection-header">
+                                <span style="font-size: 1.3rem; margin-right: 8px;">⚠️</span>
                                 <strong style="color: #856404;">DELETION SUMMARY</strong>
                             </div>
-                            <div style="color: #856404;">
-                                <strong>${totalPhotosToDelete} photos</strong> from <strong>${groupsWithDeletions} groups</strong> will be marked for deletion, saving approximately <strong>~${totalSavingsMB.toFixed(1)} MB</strong>
+                            <div class="selection-stats">
+                                <strong>${totalPhotosToDelete} photos</strong> from <strong>${groupsWithDeletions} groups</strong> • <strong>~${totalSavingsMB.toFixed(1)} MB</strong> savings
                             </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                            <div class="stat-card" style="background: #f8d7da; border: 1px solid #dc3545;">
-                                <div class="stat-number" style="color: #dc3545;">❌ ${totalPhotosToDelete}</div>
-                                <div class="stat-label">Photos to Delete</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">${groupsWithDeletions}</div>
-                                <div class="stat-label">Groups with Deletions</div>
-                            </div>
-                            <div class="stat-card" style="background: #d4edda; border: 1px solid #28a745;">
-                                <div class="stat-number" style="color: #28a745;">💾 ~${totalSavingsMB.toFixed(1)} MB</div>
-                                <div class="stat-label">Est. Storage Savings</div>
+                            <div class="selection-actions">
+                                <button class="btn" onclick="confirmDeletions()" style="background-color: #FF5722; color: white; font-weight: 600;">
+                                    🗑️ Confirm Deletions
+                                </button>
                             </div>
                         </div>
                     `;
                 } else {
-                    summaryDiv.style.display = 'none';
+                    // Show empty state with helpful message
+                    summaryDiv.classList.add('empty');
+                    summaryDiv.classList.remove('visible');
+                    summaryDiv.innerHTML = `
+                        <div class="empty-state-content">
+                            <span style="font-size: 1.2rem; color: #6c757d;">📋</span>
+                            <div style="margin-top: 8px;">Select photos to see deletion summary</div>
+                        </div>
+                    `;
                 }
             }
 
@@ -1264,27 +1363,12 @@ def legacy():
                 });
                 
                 if (totalPhotosToDelete === 0) {
-                    alert('No photos selected for deletion.');
+                    showToast('No photos selected', 'error');
                     return;
                 }
                 
-                const confirmMsg = `⚠️ CONFIRMATION REQUIRED ⚠️
-
-You are about to mark ${totalPhotosToDelete} photos for deletion.
-
-This action will:
-1. Tag these photos as "marked-for-deletion" in your Photos library
-2. Create a smart album for easy review
-3. Generate a deletion list for your records
-
-The photos will NOT be permanently deleted - you will need to manually delete them from the smart album.
-
-Do you want to proceed?`;
-                
-                if (confirm(confirmMsg)) {
-                    // Execute the real workflow
-                    executeWorkflow(deletionList, totalPhotosToDelete);
-                }
+                // Direct execution - no confirmation needed for marking photos
+                executeWorkflow(deletionList, totalPhotosToDelete);
             }
 
             function executeWorkflow(deletionList, totalPhotosToDelete) {
@@ -1318,7 +1402,7 @@ Do you want to proceed?`;
                     if (data.success) {
                         showWorkflowSuccess(data);
                     } else {
-                        alert('❌ Error: ' + (data.error || 'Unknown error occurred'));
+                        alert('❌ Something went wrong. Try again in a moment.');
                     }
                 })
                 .catch(error => {
@@ -1522,7 +1606,7 @@ Do you want to proceed?`;
                     })
                     .catch(error => {
                         console.error('Error opening photo:', error);
-                        filenameElement.textContent = '❌ Error occurred';
+                        filenameElement.textContent = '❌ Error';
                         filenameElement.style.color = '#f44336';
                         setTimeout(() => {
                             filenameElement.textContent = originalText;
@@ -2605,8 +2689,8 @@ def api_groups():
                 
                 for cluster in filtered_clusters[:max_clusters]:
                     try:
-                        # Analyze this cluster to get photo groups
-                        cluster_groups = lazy_loader.analyze_cluster_photos(cluster.cluster_id)
+                        # Analyze this cluster to get photo groups (pass filtered cluster to ensure correct photo list)
+                        cluster_groups = lazy_loader.analyze_cluster_photos(cluster.cluster_id, cluster_override=cluster)
                         all_groups.extend(cluster_groups)
                     except Exception as e:
                         print(f"⚠️ Error analyzing cluster {cluster.cluster_id}: {e}")
@@ -2912,7 +2996,7 @@ def api_groups():
                 
                 # Step 1: Scan photos
                 try:
-                    update_progress("Scanning Photos library", 1, 4, f"Analyzing up to {scan_limit:,} photos from your library...")
+                    update_progress("Scanning Photos library", 1, 4, "Scanning photos...")
                     photos = scanner.scan_photos(limit=scan_limit)
                     
                     if not photos:

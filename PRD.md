@@ -103,6 +103,34 @@ User has thousands of similar photos in macOS Photos library from burst shots an
 - User can manually delete photos from smart album in Photos app
 - Deletion lists are accurate and complete
 
+### Stage 5: Desktop Application Distribution (Future Stage)
+**Goal:** Convert web application to native macOS desktop app
+
+**User Stories:**
+- As a user, I want a native macOS app so I have better security and performance
+- As a user, I want the app available in Applications folder so it integrates with my workflow
+- As a user, I want native notifications so I know when analysis completes
+- As a user, I want menu bar integration so I can access features quickly
+
+**Technical Deliverables:**
+- Tauri desktop app wrapper preserving existing Flask backend and web frontend
+- Native menu bar and notifications
+- .dmg installer for distribution
+- Auto-update capability
+- macOS security compliance
+
+**Implementation Details:**
+- Detailed implementation plan available in DESKTOP_APP_IMPLEMENTATION_PLAN.md
+- 95%+ code preservation using embedded WebView approach
+- 5-day development timeline (~15 hours total)
+- Native app benefits while preserving all existing investment
+
+**Success Criteria:**
+- Native macOS app runs with all existing functionality preserved
+- Professional .dmg installer works correctly
+- Native menu bar and notifications functional
+- Performance equivalent or better than web version
+
 ### Stage 5: Enhanced Intelligence & Visual Similarity (Week 9-10)
 **Goal:** Improve grouping accuracy and prevent different subjects from being grouped together
 

@@ -104,7 +104,7 @@ class LazyPhotoLoader:
             ]
             print(f"📅 Year {year} filter: {len(filtered_clusters)} clusters remain")
         
-        # Apply size filters (dual-handle slider)
+        # Apply size filters (dual-handle slider) - filter by individual photo sizes
         if 'min_size_mb' in filters or 'max_size_mb' in filters:
             # Handle None values properly
             min_size_mb = filters.get('min_size_mb', 0)
@@ -119,11 +119,43 @@ class LazyPhotoLoader:
             min_size = min_size_mb * 1024 * 1024  # Convert to bytes
             max_size = max_size_mb * 1024 * 1024
             
-            filtered_clusters = [
-                c for c in filtered_clusters 
-                if min_size <= c.total_size_bytes <= max_size
-            ]
-            print(f"💾 Size filter ({filters.get('min_size_mb', 0)}-{filters.get('max_size_mb', '∞')} MB): {len(filtered_clusters)} clusters remain")
+            # Filter clusters to only include those with photos in the size range
+            size_filtered_clusters = []
+            for cluster in filtered_clusters:
+                # Check if cluster contains photos in the specified size range
+                matching_photo_uuids = []
+                total_size_matching = 0
+                
+                for uuid in cluster.photo_uuids:
+                    if uuid in self._metadata_cache:
+                        photo_metadata = self._metadata_cache[uuid]
+                        if photo_metadata.file_size and min_size <= photo_metadata.file_size <= max_size:
+                            matching_photo_uuids.append(uuid)
+                            total_size_matching += photo_metadata.file_size
+                
+                if matching_photo_uuids:
+                    # Create a copy of the cluster with only the matching photos
+                    from copy import deepcopy
+                    filtered_cluster = deepcopy(cluster)
+                    # Update photo UUIDs to only include photos in size range
+                    filtered_cluster.photo_uuids = matching_photo_uuids
+                    filtered_cluster.photo_count = len(matching_photo_uuids)
+                    # Recalculate total size for only the matching photos
+                    filtered_cluster.total_size_bytes = total_size_matching
+                    # Recalculate potential savings (keep at least one photo, so savings = total - largest)
+                    if len(matching_photo_uuids) > 1:
+                        sizes = [self._metadata_cache[uuid].file_size for uuid in matching_photo_uuids 
+                                if uuid in self._metadata_cache and self._metadata_cache[uuid].file_size]
+                        if sizes:
+                            filtered_cluster.potential_savings_bytes = total_size_matching - max(sizes)
+                    else:
+                        filtered_cluster.potential_savings_bytes = 0
+                    
+                    size_filtered_clusters.append(filtered_cluster)
+            
+            filtered_clusters = size_filtered_clusters
+            
+            print(f"💾 Size filter ({filters.get('min_size_mb', 0)}-{filters.get('max_size_mb', '∞')} MB): {len(filtered_clusters)} clusters remain with photos in range")
         
         # Apply priority filter
         if 'priority_levels' in filters and filters['priority_levels']:
@@ -179,7 +211,7 @@ class LazyPhotoLoader:
         
         return filtered_clusters
     
-    def load_cluster_photos(self, cluster_id: str) -> ClusterLoadResult:
+    def load_cluster_photos(self, cluster_id: str, cluster_override: Optional[PhotoCluster] = None) -> ClusterLoadResult:
         """Load full PhotoData objects for a specific cluster on-demand.
         
         Target: < 5 seconds per cluster
@@ -188,10 +220,12 @@ class LazyPhotoLoader:
         print(f"📥 LazyPhotoLoader: Loading photos for cluster {cluster_id}...")
         start_time = time.time()
         
-        if cluster_id not in self._cluster_cache:
-            raise ValueError(f"Cluster {cluster_id} not found in cache")
-        
-        cluster = self._cluster_cache[cluster_id]
+        if cluster_override:
+            cluster = cluster_override
+        else:
+            if cluster_id not in self._cluster_cache:
+                raise ValueError(f"Cluster {cluster_id} not found in cache")
+            cluster = self._cluster_cache[cluster_id]
         
         # Convert PhotoMetadata to PhotoData using PhotoScanner's load method
         photo_uuids = cluster.photo_uuids
@@ -228,7 +262,7 @@ class LazyPhotoLoader:
             total_size_bytes=total_size
         )
     
-    def analyze_cluster_photos(self, cluster_id: str, progress_callback: Optional[Callable] = None) -> List:
+    def analyze_cluster_photos(self, cluster_id: str, cluster_override: Optional[PhotoCluster] = None, progress_callback: Optional[Callable] = None) -> List:
         """Perform deep analysis on specific cluster only.
         
         Target: < 10 seconds total (load + analyze)
@@ -238,7 +272,7 @@ class LazyPhotoLoader:
         start_time = time.time()
         
         # Load photos for this cluster
-        load_result = self.load_cluster_photos(cluster_id)
+        load_result = self.load_cluster_photos(cluster_id, cluster_override)
         
         if not load_result.photos:
             print(f"⚠️ No photos loaded for cluster {cluster_id}")
