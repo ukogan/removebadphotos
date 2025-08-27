@@ -237,6 +237,7 @@
         .priority-btn.p1 { border-color: #f56565; }
         .priority-btn.p2 { border-color: #ed8936; }
         .priority-btn.p3 { border-color: #ecc94b; }
+        .priority-btn.p4 { border-color: #a0a0a0; }
         
         .priority-btn:hover {
             transform: scale(1.05);
@@ -254,6 +255,11 @@
         
         .priority-btn.active.p3 {
             background-color: #ecc94b;
+            color: white;
+        }
+        
+        .priority-btn.active.p4 {
+            background-color: #a0a0a0;
             color: white;
         }
         
@@ -774,6 +780,182 @@
             color: #38a169;
             font-weight: 600;
         }
+        
+        /* New Progressive Disclosure Layout Styles */
+        .active-filters-bar {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .active-filters-title {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .active-filters-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-tag {
+            background: #3182ce;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .clear-all-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .quick-filters-section {
+            margin-bottom: 30px;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .filter-group {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .filter-group h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 12px;
+        }
+        
+        .file-types-quick {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .file-type-btn {
+            background: white;
+            border: 2px solid #e2e8f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .file-type-btn:hover, .file-type-btn.active {
+            background: #3182ce;
+            color: white;
+            border-color: #3182ce;
+        }
+        
+        .advanced-filters-section {
+            margin-bottom: 30px;
+        }
+        
+        .advanced-filters-toggle {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .advanced-filters-toggle:hover {
+            opacity: 0.8;
+        }
+        
+        .toggle-icon {
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+        
+        .toggle-icon.expanded {
+            transform: rotate(180deg);
+        }
+        
+        .advanced-filters-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            margin-top: 12px;
+        }
+        
+        .results-preview-section {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .results-stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+        }
+        
+        .result-stat {
+            text-align: center;
+        }
+        
+        .result-number {
+            display: block;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        
+        .result-number.savings {
+            color: #38a169;
+        }
+        
+        .result-label {
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        
+        .btn-tertiary {
+            background: #6b7280;
+            color: white;
+            border: 2px solid #6b7280;
+        }
+        
+        .btn-tertiary:hover {
+            background: #4b5563;
+            border-color: #4b5563;
+        }
     </style>
 </head>
 <body>
@@ -790,82 +972,102 @@
             </div>
         </div>
         
+        <!-- Active Filters Breadcrumb -->
+        <div class="active-filters-bar" id="active-filters-bar" style="display: none;">
+            <div class="active-filters-content">
+                <span class="active-filters-title">🎯 Active Filters:</span>
+                <div class="active-filters-tags" id="active-filters-tags"></div>
+                <button class="clear-all-btn" onclick="clearAllFilters()">Clear All ×</button>
+            </div>
+        </div>
+        
         <div class="filter-panel">
-            <div class="filter-section">
-                <h3>📅 Filter by Year</h3>
-                <div class="year-selector">
-                    <button class="year-btn" data-year="all">All Years</button>
-                    <button class="year-btn" data-year="2025">2025</button>
-                    <button class="year-btn" data-year="2024">2024</button>
-                    <button class="year-btn" data-year="2023">2023</button>
-                    <button class="year-btn" data-year="2022">2022</button>
-                    <button class="year-btn" data-year="2021">2021</button>
-                    <button class="year-btn" data-year="2020">2020</button>
+            <!-- Quick Filters Section -->
+            <div class="quick-filters-section">
+                <h2 class="section-title">⚡ Quick Filters</h2>
+                
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <h3>🗓️ Year</h3>
+                        <div class="year-selector">
+                            <button class="year-btn" data-year="all">All Years</button>
+                            <button class="year-btn" data-year="2025">2025</button>
+                            <button class="year-btn" data-year="2024">2024</button>
+                            <button class="year-btn" data-year="2023">2023</button>
+                            <button class="year-btn" data-year="2022">2022</button>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3>🎯 Priority</h3>
+                        <div class="priority-filters">
+                            <button class="priority-btn p1" data-priority="P1">P1 High</button>
+                            <button class="priority-btn p2" data-priority="P2">P2 Medium</button>
+                            <button class="priority-btn p3" data-priority="P3">P3 Low</button>
+                            <button class="priority-btn p4" data-priority="P4">P4 Unlikely</button>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3>📱 File Types</h3>
+                        <div class="file-types-quick">
+                            <button class="file-type-btn" data-type="HEIC">HEIC</button>
+                            <button class="file-type-btn" data-type="JPG">JPG</button>
+                            <button class="file-type-btn" data-type="PNG">PNG</button>
+                            <button class="file-type-btn" data-type="all">All Types</button>
+                        </div>
+                        <div id="file-type-stats" class="file-type-stats">
+                            <div class="loading-distributions">Loading file type distribution...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <div class="filter-section">
-                <h3>💾 Filter by File Size</h3>
-                <div class="size-display">
-                    <span class="size-values">
-                        <span id="min-size-display">0</span> MB - <span id="max-size-display">100</span> MB
-                    </span>
-                    <button class="btn-secondary" onclick="resetSizeFilter()">Reset</button>
+            <!-- Advanced Filters - Collapsible -->
+            <div class="advanced-filters-section">
+                <div class="advanced-filters-toggle" onclick="toggleAdvancedFilters()">
+                    <h2 class="section-title">⚙️ Advanced Options <span class="toggle-icon">▼</span></h2>
                 </div>
-                <div class="dual-range">
-                    <input type="range" id="min-size" min="0" max="100" value="0" step="1">
-                    <input type="range" id="max-size" min="0" max="100" value="100" step="1">
-                </div>
-                <div class="size-histogram" id="size-histogram">
-                    <div class="loading-distributions">Loading size distribution...</div>
-                </div>
-            </div>
-            
-            <div class="filter-section">
-                <h3>📁 Filter by File Type</h3>
-                <div class="file-types">
-                    <label class="file-type-option" for="type-all">
-                        <input type="checkbox" id="type-all" checked>
-                        <span class="file-type-icon">📋</span>
-                        <span>All Types</span>
-                    </label>
-                    <label class="file-type-option" for="type-heic">
-                        <input type="checkbox" id="type-heic">
-                        <span class="file-type-icon">📷</span>
-                        <span>HEIC</span>
-                    </label>
-                    <label class="file-type-option" for="type-jpg">
-                        <input type="checkbox" id="type-jpg">
-                        <span class="file-type-icon">🖼️</span>
-                        <span>JPG</span>
-                    </label>
-                    <label class="file-type-option" for="type-png">
-                        <input type="checkbox" id="type-png">
-                        <span class="file-type-icon">🎨</span>
-                        <span>PNG</span>
-                    </label>
-                </div>
-                <div class="file-type-stats" id="file-type-stats">
-                    <div class="loading-distributions">Loading file type distribution...</div>
+                
+                <div class="advanced-filters-content" id="advanced-filters-content" style="display: none;">
+                    <div class="filter-group">
+                        <h3>💾 File Size</h3>
+                        <div class="size-display">
+                            <span class="size-values">
+                                <span id="min-size-display">0</span> MB - <span id="max-size-display">100</span> MB
+                            </span>
+                            <button class="btn-secondary" onclick="resetSizeFilter()">Reset</button>
+                        </div>
+                        <div class="dual-range">
+                            <input type="range" id="min-size" min="0" max="100" value="0" step="1">
+                            <input type="range" id="max-size" min="0" max="100" value="100" step="1">
+                        </div>
+                        <div class="size-histogram" id="size-histogram">
+                            <div class="loading-distributions">Loading size distribution...</div>
+                        </div>
                 </div>
             </div>
             
-            <div class="filter-section">
-                <h3>🎯 Filter by Priority</h3>
-                <div class="priority-filters">
-                    <button class="priority-btn p1" data-priority="P1">P1 - Highest</button>
-                    <button class="priority-btn p2" data-priority="P2">P2 - High</button>
-                    <button class="priority-btn p3" data-priority="P3">P3 - Medium</button>
-                    <button class="priority-btn" data-priority="P4,P5,P6">P4-P6 - Lower</button>
+            <!-- Results Preview Section -->
+            <div class="results-preview-section">
+                <h2 class="section-title">📊 Results Preview</h2>
+                <div class="results-stats" id="results-stats">
+                    <div class="result-stat">
+                        <span class="result-number" id="filtered-photos">-</span>
+                        <span class="result-label">photos match your filters</span>
+                    </div>
+                    <div class="result-stat">
+                        <span class="result-number savings" id="potential-savings">-</span>
+                        <span class="result-label">potential savings</span>
+                    </div>
                 </div>
             </div>
             
+            <!-- Action Buttons -->
             <div class="filter-actions">
-                <button class="btn btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
-                <button class="btn btn-secondary" onclick="clearAllFilters()">🗑️ Clear All</button>
-                <div class="filter-preview" id="filter-preview">
-                    <div class="loading-distributions">Select filters to see preview</div>
-                </div>
+                <button class="btn btn-primary" onclick="applyFilters()">🔍 Review Photos</button>
+                <button class="btn btn-secondary" onclick="clearAllFilters()">↺ Reset Filters</button>
+                <button class="btn btn-tertiary" onclick="saveFilterSet()">📋 Save Filter Set</button>
             </div>
             
             <!-- Analyze section removed - filters now redirect directly to analysis -->
@@ -1029,6 +1231,7 @@
             btn.addEventListener('click', () => {
                 btn.classList.toggle('active');
                 updatePriorityFilter();
+                updateActiveFilters(); // Also update the breadcrumb
             });
         });
         
@@ -1338,13 +1541,17 @@
             // Reset size
             resetSizeFilter();
             
-            // Reset file types
+            // Reset file types (old checkboxes)
             document.querySelectorAll('.file-type-option').forEach(option => {
                 option.classList.remove('selected');
                 option.querySelector('input').checked = false;
             });
             document.getElementById('type-all').checked = true;
             document.querySelector('label[for="type-all"]').classList.add('selected');
+            
+            // Reset new file type buttons
+            document.querySelectorAll('.file-type-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.file-type-btn[data-type="all"]').classList.add('active');
             
             // Reset priorities
             document.querySelectorAll('.priority-btn').forEach(btn => btn.classList.remove('active'));
@@ -1355,6 +1562,9 @@
             // Clear results
             document.getElementById('results-content').innerHTML = 
                 '<div class="loading"><div class="spinner"></div>Click "Apply Filters" to see results</div>';
+                
+            // Update breadcrumb
+            updateActiveFilters();
         }
         
         async function loadDistributions() {
@@ -1368,11 +1578,24 @@
                 if (data.success) {
                     console.log('📊 Size histogram data:', data.distributions.size_histogram);
                     console.log('📊 Size quintiles data:', data.distributions.size_quintiles);
+                    console.log('📊 About to update UI components...');
+                    
                     updateYearButtons(data.distributions.years);
+                    console.log('✅ Year buttons updated');
+                    
                     updateFileTypeStats(data.distributions.file_types);
+                    console.log('✅ File type stats updated');
+                    
                     updatePriorityStats(data.distributions.priorities);
+                    console.log('✅ Priority stats updated');
+                    
                     updateSizeHistogram(data.distributions.size_histogram, data.distributions.size_quintiles);
-                    updateSmartRecommendations([data.smart_recommendation]);
+                    console.log('✅ Size histogram updated');
+                    
+                    if (data.smart_recommendation) {
+                        updateSmartRecommendations([data.smart_recommendation]);
+                        console.log('✅ Smart recommendations updated');
+                    }
                 } else {
                     console.error('Failed to load distributions:', data.error);
                 }
@@ -1409,32 +1632,54 @@
             const statsDiv = document.getElementById('file-type-stats');
             
             if (!fileTypeData || Object.keys(fileTypeData).length === 0) {
-                statsDiv.innerHTML = '<div class="loading-distributions">No file type data available</div>';
+                if (statsDiv) statsDiv.innerHTML = '<div class="loading-distributions">No file type data available</div>';
                 return;
             }
             
             const total = Object.values(fileTypeData).reduce((sum, count) => sum + count, 0);
             
-            let html = '<div class="stats-grid">';
+            // Update button text to include counts
+            document.querySelectorAll('.file-type-btn').forEach(btn => {
+                const type = btn.dataset.type;
+                if (type && type !== 'all') {
+                    const count = fileTypeData[type.toUpperCase()] || 0;
+                    const originalText = btn.textContent.split(' (')[0]; // Remove existing count
+                    btn.textContent = `${originalText} (${count.toLocaleString()})`;
+                } else if (type === 'all') {
+                    const originalText = btn.textContent.split(' (')[0];
+                    btn.textContent = `${originalText} (${total.toLocaleString()})`;
+                }
+            });
+            
+            // Update stats display
+            let html = '<div class="stats-grid" style="font-size: 0.8rem; margin-top: 8px;">';
             Object.entries(fileTypeData).forEach(([type, count]) => {
                 const percentage = ((count / total) * 100).toFixed(1);
                 html += `
-                    <div class="stat-item">
-                        <div class="stat-label">${type.toUpperCase()}</div>
-                        <div class="stat-bar">
-                            <div class="stat-fill" style="width: ${percentage}%"></div>
-                        </div>
-                        <div class="stat-count">${count.toLocaleString()} (${percentage}%)</div>
+                    <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+                        <span>${type}:</span>
+                        <span>${count.toLocaleString()} (${percentage}%)</span>
                     </div>
                 `;
             });
             html += '</div>';
             
-            statsDiv.innerHTML = html;
+            if (statsDiv) statsDiv.innerHTML = html;
         }
         
         function updatePriorityStats(priorityData) {
             console.log('🎯 Updating priority statistics:', priorityData);
+            
+            // Update button text to include photo counts
+            document.querySelectorAll('.priority-btn').forEach(btn => {
+                const priority = btn.dataset.priority;
+                if (priority && priorityData[priority]) {
+                    const data = priorityData[priority];
+                    const originalText = btn.textContent.split(' (')[0]; // Remove existing count
+                    btn.textContent = `${originalText} (${data.photo_count.toLocaleString()})`;
+                }
+            });
+            
             // Priority stats will be displayed after the priority filters
             const priorityFilters = document.querySelector('.priority-filters');
             
@@ -1443,23 +1688,25 @@
                 return;
             }
             
-            let statsHtml = '<div class="priority-stats">';
+            let statsHtml = '<div class="priority-stats" style="margin-top: 12px; font-size: 0.85rem; color: #666;">';
             Object.entries(priorityData).forEach(([level, data]) => {
-                const savingsGB = data.potential_savings_bytes 
-                    ? (data.potential_savings_bytes / (1024 * 1024 * 1024)).toFixed(1)
+                const savingsGB = data.total_savings_bytes 
+                    ? (data.total_savings_bytes / (1024 * 1024 * 1024)).toFixed(1)
                     : '0.0';
                 statsHtml += `
-                    <div class="priority-stat">
-                        <strong>${level}</strong>: ${data.cluster_count} clusters, ${savingsGB}GB potential
+                    <div style="margin: 4px 0;">
+                        <strong>${level}</strong>: ${data.cluster_count} clusters, ${data.photo_count.toLocaleString()} photos, ${savingsGB}GB potential
                     </div>
                 `;
             });
             statsHtml += '</div>';
             
-            // Insert stats after priority buttons if not already present
-            if (!priorityFilters.parentElement.querySelector('.priority-stats')) {
-                priorityFilters.insertAdjacentHTML('afterend', statsHtml);
+            // Remove existing stats and insert new ones
+            const existingStats = priorityFilters.parentElement.querySelector('.priority-stats');
+            if (existingStats) {
+                existingStats.remove();
             }
+            priorityFilters.insertAdjacentHTML('afterend', statsHtml);
         }
         
         function updateSizeHistogram(histogramData, quintileData) {
@@ -1680,8 +1927,82 @@
             
             // Set initial state
             document.querySelector('.year-btn[data-year="all"]').classList.add('active');
-            document.querySelector('label[for="type-all"]').classList.add('selected');
             updateSizeDisplay();
+        });
+        
+        // New progressive disclosure functions
+        function toggleAdvancedFilters() {
+            const content = document.getElementById('advanced-filters-content');
+            const icon = document.querySelector('.toggle-icon');
+            
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+                icon.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                icon.classList.remove('expanded');
+            }
+        }
+        
+        function updateActiveFilters() {
+            const bar = document.getElementById('active-filters-bar');
+            const tagsContainer = document.getElementById('active-filters-tags');
+            const tags = [];
+            
+            // Check for active filters
+            const activeYear = document.querySelector('.year-btn.active:not([data-year="all"])');
+            if (activeYear) tags.push(`📅 ${activeYear.textContent}`);
+            
+            const activePriorities = document.querySelectorAll('.priority-btn.active');
+            if (activePriorities.length > 0 && activePriorities.length < 4) {
+                const priorities = Array.from(activePriorities).map(btn => btn.dataset.priority).join(', ');
+                tags.push(`🎯 ${priorities}`);
+            }
+            
+            const activeFileTypes = document.querySelectorAll('.file-type-btn.active:not([data-type="all"])');
+            if (activeFileTypes.length > 0) {
+                const types = Array.from(activeFileTypes).map(btn => btn.dataset.type).join(', ');
+                tags.push(`📱 ${types}`);
+            }
+            
+            // Show/hide the bar
+            if (tags.length > 0) {
+                bar.style.display = 'block';
+                tagsContainer.innerHTML = tags.map(tag => `<span class="filter-tag">${tag}</span>`).join('');
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+        
+        function saveFilterSet() {
+            // Placeholder for future implementation
+            alert('Filter set saving will be implemented in a future update.');
+        }
+        
+        // Update file type button interaction
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('file-type-btn')) {
+                if (e.target.dataset.type === 'all') {
+                    // Clear other selections
+                    document.querySelectorAll('.file-type-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                } else {
+                    // Remove 'all' selection and toggle this one
+                    document.querySelector('.file-type-btn[data-type="all"]').classList.remove('active');
+                    e.target.classList.toggle('active');
+                    
+                    // If none selected, select all
+                    if (!document.querySelector('.file-type-btn.active')) {
+                        document.querySelector('.file-type-btn[data-type="all"]').classList.add('active');
+                    }
+                }
+                updateActiveFilters();
+            }
+            
+            if (e.target.classList.contains('year-btn')) {
+                selectYear(e.target.dataset.year);
+                updateActiveFilters();
+            }
         });
     </script>
 </body>

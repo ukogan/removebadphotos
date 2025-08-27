@@ -529,6 +529,21 @@ def legacy():
             .preview-close:hover {
                 opacity: 1;
             }
+            
+            /* Photo interaction improvements - hover to show preview icon */
+            .photo-image-container:hover .preview-icon {
+                display: flex !important;
+            }
+            
+            .preview-icon:hover {
+                background: rgba(0,0,0,0.9) !important;
+                transform: scale(1.1);
+            }
+            
+            /* Improved photo card cursor and interaction */
+            .photo-thumbnail:hover {
+                opacity: 0.9;
+            }
         </style>
     </head>
     <body>
@@ -592,6 +607,39 @@ def legacy():
             let currentPage = 1;
             let totalGroupsAvailable = 0;
             let hasMoreGroups = false;
+            
+            // Toast notification system
+            function showToast(message, type = 'info', duration = 3000) {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 1000;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 600;
+                    max-width: 400px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#6b7280'};
+                    transform: translateX(100%);
+                    transition: transform 0.3s ease;
+                `;
+                toast.textContent = message;
+                
+                document.body.appendChild(toast);
+                
+                // Animate in
+                setTimeout(() => toast.style.transform = 'translateX(0)', 10);
+                
+                // Auto dismiss
+                setTimeout(() => {
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => document.body.removeChild(toast), 300);
+                }, duration);
+            }
 
             // Load stats immediately (working approach)
             console.log('Script starting...');
@@ -868,13 +916,18 @@ def legacy():
                         html += `
                             <div class="${cardClasses.join(' ')}" data-group="${group.group_id}" data-photo="${photo.uuid}" data-photo-index="${group.photos.indexOf(photo)}">
                                 <div class="photo-loading" id="loading_${photo.uuid}">📷 Loading...</div>
-                                <img class="photo-thumbnail" 
-                                     src="/api/thumbnail/${photo.uuid}" 
-                                     alt="${photo.filename}"
-                                     style="display: none;"
-                                     onload="this.style.display='block'; document.getElementById('loading_${photo.uuid}').style.display='none';"
-                                     onerror="this.style.display='none'; document.getElementById('loading_${photo.uuid}').innerHTML='❌ Could not load image';"
-                                     onclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});">
+                                <div class="photo-image-container" style="position: relative; cursor: pointer;">
+                                    <img class="photo-thumbnail" 
+                                         src="/api/thumbnail/${photo.uuid}" 
+                                         alt="${photo.filename}"
+                                         style="display: none;"
+                                         onload="this.style.display='block'; document.getElementById('loading_${photo.uuid}').style.display='none';"
+                                         onerror="this.style.display='none'; document.getElementById('loading_${photo.uuid}').innerHTML='❌ Could not load image';"
+                                         onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')"
+                                         ondblclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});">
+                                    <div class="preview-icon" onclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});" 
+                                         style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🔍</div>
+                                </div>
                                 <div class="photo-filename" onclick="event.stopPropagation(); openInPhotos('${photo.uuid}')">${photo.filename}</div>
                                 <div class="photo-info">
                                     <div>📅 ${timestamp}</div>
@@ -945,13 +998,18 @@ def legacy():
                         html += `
                             <div class="photo-card ${isSelected ? 'selected' : ''}" data-group="${group.group_id}" data-photo="${photo.uuid}" data-photo-index="${group.photos.indexOf(photo)}">
                                 <div class="photo-loading" id="loading_${photo.uuid}">📷 Loading...</div>
-                                <img class="photo-thumbnail" 
-                                     src="/api/thumbnail/${photo.uuid}" 
-                                     alt="${photo.filename}"
-                                     style="display: none;" 
-                                     onload="this.style.display='block'; document.getElementById('loading_${photo.uuid}').style.display='none';"
-                                     onerror="this.style.display='none'; document.getElementById('loading_${photo.uuid}').innerHTML='❌ Could not load image';"
-                                     onclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});">
+                                <div class="photo-image-container" style="position: relative; cursor: pointer;">
+                                    <img class="photo-thumbnail" 
+                                         src="/api/thumbnail/${photo.uuid}" 
+                                         alt="${photo.filename}"
+                                         style="display: none;" 
+                                         onload="this.style.display='block'; document.getElementById('loading_${photo.uuid}').style.display='none';"
+                                         onerror="this.style.display='none'; document.getElementById('loading_${photo.uuid}').innerHTML='❌ Could not load image';"
+                                         onclick="togglePhotoSelection('${group.group_id}', '${photo.uuid}')"
+                                         ondblclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});">
+                                    <div class="preview-icon" onclick="event.stopPropagation(); openPreview('${group.group_id}', ${group.photos.indexOf(photo)});" 
+                                         style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🔍</div>
+                                </div>
                                 <div class="photo-filename" onclick="event.stopPropagation(); openInPhotos('${photo.uuid}')">${photo.filename}</div>
                                 <div class="photo-info">
                                     <div>📅 ${timestamp}</div>
@@ -1053,7 +1111,7 @@ def legacy():
 
             function deleteAllPhotos(groupId) {
                 // Delete all photos in the group (select ALL for deletion)
-                if (confirm('⚠️ Are you sure you want to delete ALL photos in this group? This will mark all photos for deletion.')) {
+                if (confirm('Mark all photos in this group for deletion?')) {
                     const group = allGroups.find(g => g.group_id === groupId);
                     if (group) {
                         photoSelections[groupId] = group.photos.map(photo => photo.uuid);
@@ -1278,29 +1336,8 @@ Do you want to proceed?`;
                 const summary = data.summary;
                 const guidance = data.workflow_guidance;
                 
-                // Create a detailed success modal/alert
-                const nextSteps = summary.next_steps.map(step => '• ' + step).join('\\n');
-                const successMsg = `✅ WORKFLOW COMPLETED SUCCESSFULLY!
-
-📊 Summary:
-• ${summary.photos_processed} photos processed
-• ~${summary.estimated_savings_mb.toFixed(1)} MB estimated savings
-• Session ID: ${summary.session_id}
-• Album name: "${summary.album_name}"
-
-📋 Next Steps:
-${nextSteps}
-
-🔧 Manual Instructions:
-📋 Tagging: ${guidance.tagging_instructions}
-
-📁 Smart Album: ${guidance.album_instructions}
-
-⚠️ ${guidance.safety_reminder}
-
-📄 Deletion list has been generated and is available in the browser console.`;
-
-                alert(successMsg);
+                // Show simplified toast notification
+                showToast(`✅ ${summary.photos_processed} photos marked for deletion and added to "${summary.album_name}" album for your final review • ${summary.estimated_savings_mb.toFixed(0)} MB freed`, 'success', 4000);
                 
                 // Log detailed data to console
                 console.log('=== DELETION WORKFLOW COMPLETED ===');

@@ -106,8 +106,18 @@ class LazyPhotoLoader:
         
         # Apply size filters (dual-handle slider)
         if 'min_size_mb' in filters or 'max_size_mb' in filters:
-            min_size = filters.get('min_size_mb', 0) * 1024 * 1024  # Convert to bytes
-            max_size = filters.get('max_size_mb', float('inf')) * 1024 * 1024
+            # Handle None values properly
+            min_size_mb = filters.get('min_size_mb', 0)
+            max_size_mb = filters.get('max_size_mb', float('inf'))
+            
+            # Convert None to defaults
+            if min_size_mb is None:
+                min_size_mb = 0
+            if max_size_mb is None:
+                max_size_mb = float('inf')
+                
+            min_size = min_size_mb * 1024 * 1024  # Convert to bytes
+            max_size = max_size_mb * 1024 * 1024
             
             filtered_clusters = [
                 c for c in filtered_clusters 
