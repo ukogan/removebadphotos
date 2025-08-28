@@ -491,6 +491,36 @@
                 const btn = document.getElementById('loadGroupsBtn');
                 const status = document.getElementById('groupStatus');
                 
+                // First, check if we have filtered results from the new filter-first workflow
+                const filteredResults = sessionStorage.getItem('filteredAnalysisResults');
+                if (filteredResults) {
+                    console.log('🎯 Loading filtered analysis results from new workflow...');
+                    try {
+                        const analysisResult = JSON.parse(filteredResults);
+                        
+                        // Clear the session storage since we're using the results
+                        sessionStorage.removeItem('filteredAnalysisResults');
+                        
+                        // Process the filtered results directly
+                        allGroups = analysisResult.groups;
+                        displayGroups(analysisResult.groups);
+                        totalGroupsAvailable = analysisResult.total_groups;
+                        currentPage = 1;
+                        hasMoreGroups = false; // Filtered results are a complete set
+                        
+                        status.innerHTML = `✅ Filtered Analysis Complete • Found ${analysisResult.total_groups} groups from ${analysisResult.stats.photos_analyzed} photos`;
+                        status.title = `Analysis completed in ${analysisResult.stats.analysis_time_seconds.toFixed(2)}s`;
+                        btn.innerHTML = '✅ Filtered Analysis Complete';
+                        groupsLoaded = true;
+                        
+                        return; // Exit early, we're done
+                        
+                    } catch (error) {
+                        console.error('❌ Error loading filtered results:', error);
+                        // Fall through to regular analysis
+                    }
+                }
+                
                 btn.disabled = true;
                 btn.innerHTML = '⏳ Analyzing...';
                 status.innerHTML = '🔄 Starting analysis...';

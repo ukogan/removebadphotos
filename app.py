@@ -3013,6 +3013,223 @@ def api_groups():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+@app.route('/api/analyze-filtered', methods=['POST'])
+def api_analyze_filtered():
+    """NEW FILTER-FIRST API: Apply filters first, then analyze only the filtered subset.
+    
+    This endpoint implements the correct architecture:
+    1. Receives filter criteria from the client
+    2. Applies filters to get a small subset (target: 50-200 photos)
+    3. Analyzes ONLY that subset (should complete in 10-30 seconds)
+    4. Returns duplicate groups immediately
+    
+    Request body should contain filter criteria:
+    {
+        "date_range": {"start": "2023-01-01", "end": "2023-12-31"},
+        "file_types": ["HEIC", "JPEG"],
+        "min_file_size_mb": 1.0,
+        "max_photos": 200
+    }
+    """
+    try:
+        # Parse filter criteria from request
+        filter_data = request.get_json()
+        if not filter_data:
+            return jsonify({
+                'success': False,
+                'error': 'No filter criteria provided'
+            }), 400
+        
+        print(f"🎯 FILTER-FIRST ANALYSIS: Received filters: {filter_data}")
+        
+        # Step 1: Apply filters to get photo subset
+        print("📋 Step 1: Applying filters to select photo subset...")
+        
+        # Get filter parameters
+        date_range = filter_data.get('date_range')
+        file_types = filter_data.get('file_types', [])
+        min_file_size_mb = filter_data.get('min_file_size_mb', 0)
+        max_photos = filter_data.get('max_photos', 200)  # Target: 50-200 photos
+        
+        # Use scanner to get filtered photos
+        filtered_photos = []
+        try:
+            # Get all photos first (this is fast - just metadata)
+            all_photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+            print(f"📊 Retrieved {len(all_photos)} photos ({excluded_count} excluded)")
+            
+            # Apply date filter
+            if date_range and date_range.get('start') and date_range.get('end'):
+                start_date = datetime.fromisoformat(date_range['start'])
+                end_date = datetime.fromisoformat(date_range['end'])
+                all_photos = [p for p in all_photos if p.date and start_date <= p.date <= end_date]
+            
+            # Apply file type filter
+            if file_types:
+                # Map user-friendly names to extensions
+                type_extensions = {
+                    'HEIC': ['.heic', '.heif'],
+                    'JPEG': ['.jpg', '.jpeg'],
+                    'PNG': ['.png'],
+                    'RAW': ['.raw', '.cr2', '.nef', '.arw']
+                }
+                allowed_extensions = []
+                for file_type in file_types:
+                    if file_type in type_extensions:
+                        allowed_extensions.extend(type_extensions[file_type])
+                
+                if allowed_extensions:
+                    all_photos = [p for p in all_photos if any(p.path.lower().endswith(ext) for ext in allowed_extensions)]
+            
+            # Apply file size filter (convert MB to bytes)
+            if min_file_size_mb > 0:
+                min_size_bytes = min_file_size_mb * 1024 * 1024
+                all_photos = [p for p in all_photos if hasattr(p, 'filesize') and p.filesize >= min_size_bytes]
+            
+            # Limit to max_photos to ensure fast analysis
+            filtered_photos = all_photos[:max_photos]
+            
+            print(f"📊 Filter results: {len(all_photos)} total → {len(filtered_photos)} filtered (limit: {max_photos})")
+            
+            if len(filtered_photos) == 0:
+                return jsonify({
+                    'success': True,
+                    'groups': [],
+                    'total_groups': 0,
+                    'message': f'No photos match the filter criteria',
+                    'stats': {
+                        'photos_analyzed': 0,
+                        'analysis_time_seconds': 0
+                    }
+                })
+            
+            if len(filtered_photos) > 200:
+                print(f"⚠️ Warning: {len(filtered_photos)} photos selected. Consider more restrictive filters for faster analysis.")
+        
+        except Exception as e:
+            print(f"❌ Error applying filters: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Filter application error: {str(e)}'
+            }), 500
+        
+        # Step 2: Analyze only the filtered subset
+        print(f"🔬 Step 2: Analyzing {len(filtered_photos)} filtered photos...")
+        analysis_start_time = datetime.now()
+        
+        try:
+            # Create photo groups from filtered photos only
+            photo_groups = []
+            
+            # Group photos by time windows (simplified approach for filtered subset)
+            time_window_seconds = 10
+            current_group = []
+            last_timestamp = None
+            
+            # Sort photos by timestamp
+            sorted_photos = sorted(filtered_photos, key=lambda p: p.date)
+            
+            for photo in sorted_photos:
+                if (last_timestamp is None or 
+                    (photo.date - last_timestamp).total_seconds() <= time_window_seconds):
+                    # Add to current group
+                    current_group.append(photo)
+                else:
+                    # Start new group
+                    if len(current_group) > 1:  # Only keep groups with multiple photos
+                        photo_groups.append(current_group)
+                    current_group = [photo]
+                
+                last_timestamp = photo.date
+            
+            # Don't forget the last group
+            if len(current_group) > 1:
+                photo_groups.append(current_group)
+            
+            print(f"📊 Created {len(photo_groups)} potential duplicate groups from {len(filtered_photos)} photos")
+            
+            # Step 3: Convert to API response format
+            api_groups = []
+            for i, group in enumerate(photo_groups[:20]):  # Limit to 20 groups for now
+                group_data = {
+                    'group_id': f'filtered_group_{i}',
+                    'photos': [],
+                    'potential_savings_bytes': 0,
+                    'recommended_photo_uuid': None
+                }
+                
+                total_size = 0
+                best_photo = None
+                best_score = 0
+                
+                for photo in group:
+                    # Simple quality score (can be enhanced later)
+                    quality_score = 50.0  # Default
+                    if hasattr(photo, 'favorite') and photo.favorite:
+                        quality_score = 100.0
+                    
+                    photo_data = {
+                        'uuid': photo.uuid,
+                        'filename': photo.filename,
+                        'original_filename': photo.original_filename if hasattr(photo, 'original_filename') else photo.filename,
+                        'timestamp': photo.date.isoformat(),
+                        'file_size': getattr(photo, 'filesize', 0),
+                        'quality_score': quality_score,
+                        'recommended': False  # Will be set below
+                    }
+                    
+                    group_data['photos'].append(photo_data)
+                    total_size += getattr(photo, 'filesize', 0)
+                    
+                    if quality_score > best_score:
+                        best_score = quality_score
+                        best_photo = photo.uuid
+                
+                # Set recommendation and savings
+                group_data['recommended_photo_uuid'] = best_photo
+                group_data['potential_savings_bytes'] = total_size - max(p['file_size'] for p in group_data['photos'])
+                
+                # Mark recommended photo
+                for photo_data in group_data['photos']:
+                    photo_data['recommended'] = (photo_data['uuid'] == best_photo)
+                
+                api_groups.append(group_data)
+            
+            analysis_end_time = datetime.now()
+            analysis_duration = (analysis_end_time - analysis_start_time).total_seconds()
+            
+            print(f"✅ Filter-first analysis completed in {analysis_duration:.1f} seconds")
+            
+            return jsonify({
+                'success': True,
+                'groups': api_groups,
+                'total_groups': len(api_groups),
+                'message': f'Analyzed {len(filtered_photos)} filtered photos and found {len(api_groups)} duplicate groups',
+                'stats': {
+                    'photos_filtered': len(filtered_photos),
+                    'photos_analyzed': len(filtered_photos),
+                    'groups_found': len(api_groups),
+                    'analysis_time_seconds': round(analysis_duration, 1),
+                    'filters_applied': filter_data
+                }
+            })
+            
+        except Exception as e:
+            print(f"❌ Error during filtered analysis: {e}")
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'error': f'Analysis error: {str(e)}'
+            }), 500
+    
+    except Exception as e:
+        print(f"❌ Error in analyze-filtered endpoint: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
 @app.route('/api/thumbnail/<photo_uuid>')
 def api_thumbnail(photo_uuid):
     """Serve photo thumbnail by UUID."""

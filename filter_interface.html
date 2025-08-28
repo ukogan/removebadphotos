@@ -1441,18 +1441,13 @@
                 // Call unified analysis endpoint
                 updateProgressUI(25, 'Scanning photo library...');
                 
-                const response = await fetch('/api/analyze-duplicates', {
+                const response = await fetch('/api/analyze-filtered', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        filters: filterCriteria,
-                        pagination: {
-                            page: 1,
-                            limit: 10,
-                            sort: 'savings_desc'
-                        }
+                        filters: filterCriteria
                     })
                 });
                 
@@ -1463,7 +1458,14 @@
                 if (analysisResult.success) {
                     updateProgressUI(100, 'Analysis complete! Redirecting to results...');
                     
-                    console.log('✅ Analysis complete:', analysisResult.analysis);
+                    console.log('✅ Analysis complete:', {
+                        groups_found: analysisResult.total_groups,
+                        photos_analyzed: analysisResult.stats.photos_analyzed,
+                        analysis_time: analysisResult.stats.analysis_time_seconds
+                    });
+                    
+                    // Store the analysis results for the legacy interface
+                    sessionStorage.setItem('filteredAnalysisResults', JSON.stringify(analysisResult));
                     
                     // Navigate to existing /legacy interface (with improved pagination)
                     setTimeout(() => {
