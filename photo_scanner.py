@@ -558,13 +558,44 @@ class PhotoScanner:
         """Enhance groups with perceptual hash similarity analysis."""
         print("🔬 Computing perceptual hashes and image-based quality analysis...")
         
+        # Import app module to check for cancellation
+        try:
+            import app
+            progress_status = app.progress_status
+        except ImportError:
+            progress_status = {'cancelled': False, 'active': True}  # Fallback if app not available
+        
         enhanced_groups = []
         total_photos = sum(len(group.photos) for group in groups)
         photos_processed = 0
         
         for group_idx, group in enumerate(groups):
+            # Check for cancellation at group level (check both cancelled flag and active status)
+            # Refresh progress status to get current values
+            try:
+                import app
+                current_status = app.progress_status
+            except:
+                current_status = progress_status
+            
+            if current_status.get('cancelled', False):
+                print(f"🛑 Analysis cancelled at group {group_idx + 1}/{len(groups)}")
+                break
+                
             # Compute hashes and quality scores for all photos in group
             for photo in group.photos:
+                # Check for cancellation at photo level (more responsive)
+                # Refresh progress status to get current values
+                try:
+                    import app
+                    current_status = app.progress_status
+                except:
+                    current_status = progress_status
+                
+                if current_status.get('cancelled', False):
+                    print(f"🛑 Analysis cancelled at photo {photos_processed + 1}/{total_photos}")
+                    return enhanced_groups  # Return what we have so far
+                    
                 if not photo.analyzed:
                     photos_processed += 1
                     

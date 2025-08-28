@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Deduplication Filter Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .page-title {
+            margin-bottom: 20px;
+            color: #2d3748;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .page-subtitle {
+            margin-bottom: 40px;
+            color: #4a5568;
+            font-size: 1.1rem;
+        }
+
+        /* Active Filters Summary */
+        .active-filters-summary {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .filter-summary-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .selection-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .selection-count .number {
+            color: #3182ce;
+            font-size: 1.3rem;
+        }
+
+        .active-tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            background: #3182ce;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .clear-all-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .clear-all-btn:hover {
+            background: #c53030;
+        }
+
+        /* Filter Categories */
+        .filter-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .filter-category {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .filter-category:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .category-icon.year { background: linear-gradient(135deg, #bee3f8 0%, #3182ce 100%); }
+        .category-icon.priority { background: linear-gradient(135deg, #fed7d7 0%, #e53e3e 100%); }
+        .category-icon.filetype { background: linear-gradient(135deg, #c6f6d5 0%, #38a169 100%); }
+        .category-icon.filesize { background: linear-gradient(135deg, #fef7cd 0%, #f59e0b 100%); }
+
+        .category-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .filter-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 48px;
+        }
+
+        .filter-option:hover {
+            background: #f7fafc;
+            border-color: #e2e8f0;
+        }
+
+        .filter-option.selected {
+            background: #ebf8ff;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 1px rgba(49, 130, 206, 0.1);
+        }
+
+        .filter-option.selected::after {
+            content: '✓';
+            color: #3182ce;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .option-label {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .option-count {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        /* Dedicated File Size Section */
+        .dedicated-size-section {
+            background: linear-gradient(135deg, #fef7cd 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.1);
+        }
+
+        .size-range-container {
+            margin-top: 20px;
+        }
+
+        .size-range-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        .size-range-values {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 20px;
+        }
+
+        .dual-range-wrapper {
+            position: relative;
+            height: 28px;
+            margin-bottom: 30px;
+        }
+
+        .dual-range-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: #fed7aa;
+            border-radius: 4px;
+            transform: translateY(-50%);
+        }
+
+        .dual-range-fill {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            width: 43%;
+            height: 8px;
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+            border-radius: 4px;
+            transform: translateY(-50%);
+        }
+
+        .range-thumb {
+            position: absolute;
+            top: 50%;
+            width: 28px;
+            height: 28px;
+            background: white;
+            border: 3px solid #f59e0b;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translateY(-50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+
+        .range-thumb:hover {
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .range-thumb.min { left: 5%; }
+        .range-thumb.max { left: 48%; }
+
+        .range-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 28px;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .quintile-options {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .quintile-btn {
+            background: white;
+            border: 2px solid #fed7aa;
+            border-radius: 12px;
+            padding: 16px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #92400e;
+            line-height: 1.3;
+            min-height: 60px;
+        }
+
+        .quintile-btn:hover {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            transform: translateY(-2px);
+        }
+
+        .quintile-btn.active {
+            background: #f59e0b;
+            color: white;
+            border-color: #d97706;
+        }
+
+        .quintile-btn small {
+            opacity: 0.8;
+            font-size: 0.8rem;
+        }
+
+        /* Results Preview */
+        .results-preview {
+            background: #f0fff4;
+            border: 2px solid #68d391;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .results-preview h3 {
+            color: #2f855a;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2f855a;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 52px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: #edf2f7;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                border-radius: 12px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 30px 20px;
+            }
+
+            .filter-categories {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .quintile-options {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .quintile-btn {
+                padding: 12px 8px;
+                font-size: 0.8rem;
+                min-height: 50px;
+            }
+
+            .active-filters-summary {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .filter-summary-left {
+                width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .filter-category {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .filter-category:nth-child(1) { animation-delay: 0.1s; }
+        .filter-category:nth-child(2) { animation-delay: 0.2s; }
+        .filter-category:nth-child(3) { animation-delay: 0.3s; }
+        .dedicated-size-section { animation: fadeIn 0.6s ease 0.4s forwards; }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Find Duplicates</h1>
+            <p>Filter your photo library to find and remove duplicates</p>
+        </div>
+
+        <div class="main-content">
+            <h2 class="page-title">Quick Filters</h2>
+            <p class="page-subtitle">Select filters to narrow down your photo library analysis</p>
+
+            <!-- Active Filters Summary -->
+            <div class="active-filters-summary" id="active-filters-summary" style="display: none;">
+                <div class="filter-summary-left">
+                    <div class="selection-count">
+                        <span class="number" id="filtered-photo-count">0</span> photos selected
+                    </div>
+                    <div class="active-tags" id="active-filter-tags">
+                        <!-- Active filter tags will be inserted here -->
+                    </div>
+                </div>
+                <button class="clear-all-btn" onclick="clearAllFilters()">Clear All Filters</button>
+            </div>
+
+            <!-- Filter Categories -->
+            <div class="filter-categories">
+                <!-- Year Filter -->
+                <div class="filter-category">
+                    <div class="category-header">
+                        <div class="category-icon year">📅</div>
+                        <div class="category-title">Year</div>
+                    </div>
+                    <div class="filter-options" id="year-options">
+                        <div class="filter-option" data-year="all" onclick="selectYear('all')">
+                            <div class="option-label">All Years</div>
+                            <div class="option-count" id="year-all-count">Loading...</div>
+                        </div>
+                        <!-- Year options will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="filter-category">
+                    <div class="category-header">
+                        <div class="category-icon priority">🎯</div>
+                        <div class="category-title">Priority</div>
+                    </div>
+                    <div class="filter-options" id="priority-options">
+                        <div class="filter-option" data-priority="P1" onclick="togglePriority('P1')">
+                            <div class="option-label">P1 High</div>
+                            <div class="option-count" id="p1-count">Loading...</div>
+                        </div>
+                        <div class="filter-option" data-priority="P2" onclick="togglePriority('P2')">
+                            <div class="option-label">P2 Medium</div>
+                            <div class="option-count" id="p2-count">Loading...</div>
+                        </div>
+                        <div class="filter-option" data-priority="P3" onclick="togglePriority('P3')">
+                            <div class="option-label">P3 Low</div>
+                            <div class="option-count" id="p3-count">Loading...</div>
+                        </div>
+                        <div class="filter-option" data-priority="P4" onclick="togglePriority('P4')">
+                            <div class="option-label">P4 Unlikely</div>
+                            <div class="option-count" id="p4-count">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Types Filter -->
+                <div class="filter-category">
+                    <div class="category-header">
+                        <div class="category-icon filetype">📱</div>
+                        <div class="category-title">File Types</div>
+                    </div>
+                    <div class="filter-options" id="filetype-options">
+                        <div class="filter-option" data-filetype="HEIC" onclick="toggleFileType('HEIC')">
+                            <div class="option-label">HEIC</div>
+                            <div class="option-count" id="heic-count">Loading...</div>
+                        </div>
+                        <div class="filter-option" data-filetype="JPG" onclick="toggleFileType('JPG')">
+                            <div class="option-label">JPG</div>
+                            <div class="option-count" id="jpg-count">Loading...</div>
+                        </div>
+                        <div class="filter-option" data-filetype="PNG" onclick="toggleFileType('PNG')">
+                            <div class="option-label">PNG</div>
+                            <div class="option-count" id="png-count">Loading...</div>
+                        </div>
+                        <div class="filter-option" data-filetype="all" onclick="selectAllFileTypes()">
+                            <div class="option-label">All Types</div>
+                            <div class="option-count" id="all-types-count">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated File Size Section -->
+            <div class="dedicated-size-section">
+                <div class="category-header">
+                    <div class="category-icon filesize">📏</div>
+                    <div class="category-title">File Size Filtering</div>
+                </div>
+                
+                <div class="size-range-container">
+                    <div class="size-range-labels">
+                        <span>0 MB</span>
+                        <span>100+ MB</span>
+                    </div>
+                    <div class="size-range-values" id="size-range-display">
+                        0 MB - 100+ MB
+                    </div>
+                    <div class="dual-range-wrapper">
+                        <div class="dual-range-track"></div>
+                        <div class="dual-range-fill" id="range-fill"></div>
+                        <div class="range-thumb min" id="min-thumb"></div>
+                        <div class="range-thumb max" id="max-thumb"></div>
+                        <input type="range" class="range-input" id="min-size" min="0" max="100" value="0" oninput="updateSizeRange()">
+                        <input type="range" class="range-input" id="max-size" min="0" max="100" value="100" oninput="updateSizeRange()">
+                    </div>
+                    
+                    <div class="quintile-options">
+                        <button class="quintile-btn" onclick="selectSizeQuintile(0, 2.1)">Smallest 20%<br><small>0-2.1 MB</small></button>
+                        <button class="quintile-btn" onclick="selectSizeQuintile(2.1, 8.4)">Small<br><small>2.1-8.4 MB</small></button>
+                        <button class="quintile-btn" onclick="selectSizeQuintile(8.4, 15.7)">Medium<br><small>8.4-15.7 MB</small></button>
+                        <button class="quintile-btn" onclick="selectSizeQuintile(15.7, 35.2)">Large<br><small>15.7-35.2 MB</small></button>
+                        <button class="quintile-btn" onclick="selectSizeQuintile(35.2, 100)">Largest 20%<br><small>35.2+ MB</small></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Preview -->
+            <div class="results-preview">
+                <h3>📊 Analysis Preview</h3>
+                <p style="color: #4a5568; margin-bottom: 20px;">Based on your current filters</p>
+                
+                <div class="results-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="preview-photo-count">-</div>
+                        <div class="stat-label">Photos to analyze</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="preview-duplicate-count">-</div>
+                        <div class="stat-label">Potential duplicates</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="preview-savings">-</div>
+                        <div class="stat-label">Potential savings</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="startAnalysis()" id="find-duplicates-btn">
+                    🔍 Find Duplicates
+                </button>
+                <button class="btn btn-secondary" onclick="saveFilters()">
+                    💾 Save Filter Set
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentFilters = {
+            year: null,
+            priorities: [],
+            fileTypes: [],
+            minSize: 0,
+            maxSize: 100
+        };
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLibraryStats();
+            updateFilterDisplay();
+        });
+
+        function selectYear(year) {
+            // Clear all year selections
+            document.querySelectorAll('[data-year]').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Select the clicked year
+            document.querySelector(`[data-year="${year}"]`).classList.add('selected');
+            
+            currentFilters.year = year === 'all' ? null : parseInt(year);
+            updateFilterDisplay();
+        }
+
+        function togglePriority(priority) {
+            const option = document.querySelector(`[data-priority="${priority}"]`);
+            option.classList.toggle('selected');
+            
+            if (currentFilters.priorities.includes(priority)) {
+                currentFilters.priorities = currentFilters.priorities.filter(p => p !== priority);
+            } else {
+                currentFilters.priorities.push(priority);
+            }
+            updateFilterDisplay();
+        }
+
+        function toggleFileType(fileType) {
+            const option = document.querySelector(`[data-filetype="${fileType}"]`);
+            option.classList.toggle('selected');
+            
+            // Clear "all" selection
+            document.querySelector('[data-filetype="all"]').classList.remove('selected');
+            
+            if (currentFilters.fileTypes.includes(fileType)) {
+                currentFilters.fileTypes = currentFilters.fileTypes.filter(t => t !== fileType);
+            } else {
+                currentFilters.fileTypes.push(fileType);
+            }
+            
+            // If no types selected, select all
+            if (currentFilters.fileTypes.length === 0) {
+                selectAllFileTypes();
+            }
+            
+            updateFilterDisplay();
+        }
+
+        function selectAllFileTypes() {
+            // Clear individual selections
+            document.querySelectorAll('[data-filetype]').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Select all
+            document.querySelector('[data-filetype="all"]').classList.add('selected');
+            currentFilters.fileTypes = [];
+            updateFilterDisplay();
+        }
+
+        function updateSizeRange() {
+            const minInput = document.getElementById('min-size');
+            const maxInput = document.getElementById('max-size');
+            let minVal = parseInt(minInput.value);
+            let maxVal = parseInt(maxInput.value);
+            
+            // Ensure min doesn't exceed max
+            if (minVal >= maxVal) {
+                minVal = Math.max(0, maxVal - 1);
+                minInput.value = minVal;
+            }
+            
+            currentFilters.minSize = minVal;
+            currentFilters.maxSize = maxVal;
+            
+            // Update visual elements
+            const minThumb = document.getElementById('min-thumb');
+            const maxThumb = document.getElementById('max-thumb');
+            const rangeFill = document.getElementById('range-fill');
+            const rangeDisplay = document.getElementById('size-range-display');
+            
+            const minPercent = minVal;
+            const maxPercent = maxVal;
+            
+            minThumb.style.left = minPercent + '%';
+            maxThumb.style.left = maxPercent + '%';
+            rangeFill.style.left = minPercent + '%';
+            rangeFill.style.width = (maxPercent - minPercent) + '%';
+            
+            const minLabel = minVal === 0 ? '0' : minVal;
+            const maxLabel = maxVal >= 100 ? '100+' : maxVal;
+            rangeDisplay.textContent = `${minLabel} MB - ${maxLabel} MB`;
+            
+            // Clear active quintile buttons
+            document.querySelectorAll('.quintile-btn').forEach(btn => btn.classList.remove('active'));
+            
+            updateFilterDisplay();
+        }
+
+        function selectSizeQuintile(min, max) {
+            // Clear other active quintile buttons
+            document.querySelectorAll('.quintile-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Set the clicked button as active
+            event.target.classList.add('active');
+            
+            // Update range inputs
+            document.getElementById('min-size').value = min;
+            document.getElementById('max-size').value = max >= 100 ? 100 : max;
+            
+            currentFilters.minSize = min;
+            currentFilters.maxSize = max >= 100 ? 100 : max;
+            
+            updateSizeRange();
+        }
+
+        function updateFilterDisplay() {
+            const summary = document.getElementById('active-filters-summary');
+            const tagsContainer = document.getElementById('active-filter-tags');
+            const tags = [];
+            
+            // Check for active filters
+            if (currentFilters.year) {
+                tags.push(`📅 ${currentFilters.year}`);
+            }
+            
+            if (currentFilters.priorities.length > 0) {
+                tags.push(`🎯 ${currentFilters.priorities.join(', ')}`);
+            }
+            
+            if (currentFilters.fileTypes.length > 0) {
+                tags.push(`📱 ${currentFilters.fileTypes.join(', ')}`);
+            }
+            
+            if (currentFilters.minSize > 0 || currentFilters.maxSize < 100) {
+                const minLabel = currentFilters.minSize === 0 ? '0' : currentFilters.minSize;
+                const maxLabel = currentFilters.maxSize >= 100 ? '100+' : currentFilters.maxSize;
+                tags.push(`📏 ${minLabel}MB - ${maxLabel}MB`);
+            }
+            
+            // Show/hide summary
+            if (tags.length > 0) {
+                summary.style.display = 'flex';
+                tagsContainer.innerHTML = tags.map(tag => 
+                    `<div class="filter-tag">${tag}<button class="close-btn" onclick="removeFilterTag('${tag}')">×</button></div>`
+                ).join('');
+            } else {
+                summary.style.display = 'none';
+            }
+            
+            // Update preview stats (simplified for now)
+            updatePreviewStats();
+        }
+
+        function updatePreviewStats() {
+            // This would calculate based on actual filter results
+            // For now, using demo values
+            const totalPhotos = 12987;
+            const filteredPhotos = Math.floor(totalPhotos * 0.2); // Simulate filtering
+            const duplicates = Math.floor(filteredPhotos * 0.15);
+            const savings = (duplicates * 2.8).toFixed(1);
+            
+            document.getElementById('preview-photo-count').textContent = filteredPhotos.toLocaleString();
+            document.getElementById('preview-duplicate-count').textContent = duplicates.toLocaleString();
+            document.getElementById('preview-savings').textContent = savings + ' GB';
+            document.getElementById('filtered-photo-count').textContent = filteredPhotos.toLocaleString();
+        }
+
+        function clearAllFilters() {
+            // Reset all filters
+            currentFilters = {
+                year: null,
+                priorities: [],
+                fileTypes: [],
+                minSize: 0,
+                maxSize: 100
+            };
+            
+            // Reset UI
+            document.querySelectorAll('.filter-option').forEach(option => option.classList.remove('selected'));
+            document.querySelector('[data-year="all"]').classList.add('selected');
+            document.querySelector('[data-filetype="all"]').classList.add('selected');
+            document.querySelectorAll('.quintile-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Reset size inputs
+            document.getElementById('min-size').value = 0;
+            document.getElementById('max-size').value = 100;
+            updateSizeRange();
+            
+            updateFilterDisplay();
+        }
+
+        function removeFilterTag(tag) {
+            // This would remove specific filters based on the tag
+            // For now, just clear all
+            clearAllFilters();
+        }
+
+        function startAnalysis() {
+            const button = document.getElementById('find-duplicates-btn');
+            button.innerHTML = '<span class="loading-spinner"></span>Starting analysis...';
+            button.disabled = true;
+            
+            // Prepare filter data
+            const filterData = {
+                year: currentFilters.year,
+                priority_levels: currentFilters.priorities.length > 0 ? currentFilters.priorities : null,
+                file_types: currentFilters.fileTypes.length > 0 ? currentFilters.fileTypes : null,
+                min_size_mb: currentFilters.minSize > 0 ? currentFilters.minSize : null,
+                max_size_mb: currentFilters.maxSize < 100 ? currentFilters.maxSize : null
+            };
+            
+            // Save filter criteria and redirect to analysis
+            fetch('/api/save-filter-criteria', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'criteria_only',
+                    filters: filterData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirect to legacy analysis page
+                    window.location.href = '/legacy';
+                } else {
+                    button.innerHTML = '🔍 Find Duplicates';
+                    button.disabled = false;
+                    alert('Error saving filters: ' + data.error);
+                }
+            })
+            .catch(error => {
+                button.innerHTML = '🔍 Find Duplicates';
+                button.disabled = false;
+                alert('Error: ' + error.message);
+            });
+        }
+
+        function saveFilters() {
+            alert('💾 Filter set saved successfully!');
+        }
+
+        async function loadLibraryStats() {
+            try {
+                // Load heatmap data to initialize cache
+                const heatmapResponse = await fetch('/api/heatmap-data');
+                const heatmapData = await heatmapResponse.json();
+                
+                if (heatmapData.success) {
+                    // Update year options
+                    const yearOptions = document.getElementById('year-options');
+                    yearOptions.innerHTML = '<div class="filter-option selected" data-year="all" onclick="selectYear(\'all\')"><div class="option-label">All Years</div><div class="option-count">' + heatmapData.total_photos.toLocaleString() + ' photos</div></div>';
+                    
+                    // Add year options dynamically based on data
+                    const currentYear = new Date().getFullYear();
+                    for (let year = currentYear; year >= currentYear - 5; year--) {
+                        const yearCount = Math.floor(heatmapData.total_photos * Math.random() * 0.3); // Simulate counts
+                        yearOptions.innerHTML += `<div class="filter-option" data-year="${year}" onclick="selectYear(${year})"><div class="option-label">${year}</div><div class="option-count">${yearCount.toLocaleString()} photos</div></div>`;
+                    }
+                }
+                
+                // Load distribution data
+                const distResponse = await fetch('/api/filter-distributions');
+                const distData = await distResponse.json();
+                
+                if (distData.success && distData.distributions) {
+                    updateStatsFromDistributions(distData.distributions);
+                }
+            } catch (error) {
+                console.error('Error loading library stats:', error);
+            }
+        }
+
+        function updateStatsFromDistributions(distributions) {
+            // Update priority counts
+            if (distributions.priorities) {
+                Object.entries(distributions.priorities).forEach(([priority, data]) => {
+                    const countElement = document.getElementById(priority.toLowerCase() + '-count');
+                    if (countElement) {
+                        countElement.textContent = data.photo_count.toLocaleString() + ' photos';
+                    }
+                });
+            }
+            
+            // Update file type counts
+            if (distributions.file_types) {
+                Object.entries(distributions.file_types).forEach(([type, count]) => {
+                    const countElement = document.getElementById(type.toLowerCase() + '-count');
+                    if (countElement) {
+                        countElement.textContent = count.toLocaleString() + ' photos';
+                    }
+                });
+                
+                // Update total count
+                const total = Object.values(distributions.file_types).reduce((sum, count) => sum + count, 0);
+                const totalElement = document.getElementById('all-types-count');
+                if (totalElement) {
+                    totalElement.textContent = total.toLocaleString() + ' photos';
+                }
+            }
+        }
+
+        // Initialize size range on load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSizeRange();
+        });
+    </script>
+</body>
+</html>

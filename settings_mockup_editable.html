@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Deduplication Settings - Editable Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 20px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+
+        .wireframe-container {
+            display: flex;
+            gap: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Text Editor Panel */
+        .text-editor {
+            width: 400px;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .editor-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #2d3748;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #ebf8ff 0%, #e6f3ff 100%);
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            color: #2c5282;
+            line-height: 1.5;
+        }
+
+        .text-group {
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            background: #fafbfc;
+        }
+
+        .text-group-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #4a5568;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .text-field {
+            margin-bottom: 12px;
+        }
+
+        .text-label {
+            display: block;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .text-input, .text-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .text-input:focus, .text-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .text-textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .export-controls {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .export-btn, .reset-btn {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+        }
+
+        .import-btn {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+        }
+
+        .import-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 153, 225, 0.3);
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 101, 101, 0.3);
+        }
+
+        /* Settings Modal */
+        .settings-container {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .settings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        .settings-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .settings-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .close-icon {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .close-icon:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .settings-content {
+            padding: 40px;
+        }
+
+        /* Preset Section */
+        .preset-section {
+            background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+            border: 2px solid #4fd1c7;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 25px rgba(79, 209, 199, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #4fd1c7 0%, #38b2ac 100%);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .preset-btn {
+            padding: 16px 12px;
+            background: white;
+            border: 2px solid #4fd1c7;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            color: #2c7a7b;
+            line-height: 1.3;
+        }
+
+        .preset-btn:hover {
+            background: #f0fdfa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 209, 199, 0.2);
+        }
+
+        .preset-btn.active {
+            background: #4fd1c7;
+            color: white;
+            border-color: #38b2ac;
+        }
+
+        .preset-description {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        /* Settings Categories */
+        .settings-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .settings-category {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .settings-category:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .category-icon.time { background: linear-gradient(135deg, #bee3f8 0%, #3182ce 100%); }
+        .category-icon.visual { background: linear-gradient(135deg, #fbb6ce 0%, #d53f8c 100%); }
+        .category-icon.quality { background: linear-gradient(135deg, #c6f6d5 0%, #38a169 100%); }
+        .category-icon.priority { background: linear-gradient(135deg, #fed7d7 0%, #e53e3e 100%); }
+
+        .category-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 6px;
+        }
+
+        .form-help {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .range-container {
+            margin: 12px 0;
+        }
+
+        .range-input {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .range-input::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .range-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .current-value {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .weight-sliders {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .slider-group {
+            text-align: center;
+        }
+
+        .slider-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+
+        /* Collapsible Advanced Section */
+        .advanced-section {
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            margin-top: 30px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .advanced-toggle {
+            background: #f7fafc;
+            padding: 20px 24px;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .advanced-toggle:hover {
+            background: #edf2f7;
+        }
+
+        .toggle-icon {
+            font-size: 1.2rem;
+            transition: transform 0.2s ease;
+        }
+
+        .advanced-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .advanced-content.expanded {
+            max-height: 800px;
+        }
+
+        .advanced-inner {
+            padding: 24px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 30px 40px;
+            background: #f7fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .action-btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 52px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: #edf2f7;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+
+        .btn-reset {
+            background: #fed7d7;
+            color: #c53030;
+            border: 2px solid #feb2b2;
+        }
+
+        .btn-reset:hover {
+            background: #feb2b2;
+            transform: translateY(-2px);
+        }
+
+        .impact-indicator {
+            background: #f0fff4;
+            border: 1px solid #68d391;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #2f855a;
+            text-align: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .wireframe-container {
+                flex-direction: column;
+            }
+            
+            .text-editor {
+                width: 100%;
+                position: relative;
+                max-height: none;
+                order: 2;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .settings-header {
+                padding: 20px;
+            }
+            
+            .settings-content {
+                padding: 20px;
+            }
+            
+            .settings-categories {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .preset-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .weight-sliders {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                padding: 20px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .settings-category {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .settings-category:nth-child(1) { animation-delay: 0.1s; }
+        .settings-category:nth-child(2) { animation-delay: 0.2s; }
+        .settings-category:nth-child(3) { animation-delay: 0.3s; }
+        .settings-category:nth-child(4) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <div class="wireframe-container">
+        <!-- Text Editor Panel -->
+        <div class="text-editor">
+            <h2 class="editor-title">✏️ Edit Settings Text</h2>
+            
+            <div class="instructions">
+                Edit any text in the settings interface and see changes reflected in real-time. Use the export/import buttons to save and share your customizations.
+            </div>
+            
+            <!-- Header Text -->
+            <div class="text-group">
+                <div class="text-group-title">📋 Header Section</div>
+                <div class="text-field">
+                    <label class="text-label">Main Title</label>
+                    <input type="text" class="text-input" id="settings-title" value="Algorithm Settings">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Subtitle</label>
+                    <input type="text" class="text-input" id="settings-subtitle" value="Configure photo deduplication parameters">
+                </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="text-group">
+                <div class="text-group-title">⚡ Quick Presets</div>
+                <div class="text-field">
+                    <label class="text-label">Section Title</label>
+                    <input type="text" class="text-input" id="preset-title" value="Quick Presets">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Conservative Preset</label>
+                    <input type="text" class="text-input" id="preset-conservative" value="Conservative">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Conservative Description</label>
+                    <textarea class="text-textarea" id="preset-conservative-desc">Minimize false positives</textarea>
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Balanced Preset</label>
+                    <input type="text" class="text-input" id="preset-balanced" value="Balanced">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Balanced Description</label>
+                    <textarea class="text-textarea" id="preset-balanced-desc">Current default settings</textarea>
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Aggressive Preset</label>
+                    <input type="text" class="text-input" id="preset-aggressive" value="Aggressive">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Aggressive Description</label>
+                    <textarea class="text-textarea" id="preset-aggressive-desc">Maximum detection</textarea>
+                </div>
+            </div>
+
+            <!-- Category Titles -->
+            <div class="text-group">
+                <div class="text-group-title">📁 Category Titles</div>
+                <div class="text-field">
+                    <label class="text-label">Time-Based Grouping</label>
+                    <input type="text" class="text-input" id="category-time" value="Time-Based Grouping">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Visual Similarity</label>
+                    <input type="text" class="text-input" id="category-visual" value="Visual Similarity">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Quality Scoring</label>
+                    <input type="text" class="text-input" id="category-quality" value="Quality Scoring">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Priority Classification</label>
+                    <input type="text" class="text-input" id="category-priority" value="Priority Classification">
+                </div>
+            </div>
+
+            <!-- Field Labels -->
+            <div class="text-group">
+                <div class="text-group-title">🏷️ Field Labels</div>
+                <div class="text-field">
+                    <label class="text-label">Burst Time Window Label</label>
+                    <input type="text" class="text-input" id="burst-window-label" value="Photo Burst Time Window">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Burst Window Help</label>
+                    <textarea class="text-textarea" id="burst-window-help">Time window to group photos taken in rapid succession</textarea>
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Event Window Label</label>
+                    <input type="text" class="text-input" id="event-window-label" value="Event Grouping Time Window">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Event Window Help</label>
+                    <textarea class="text-textarea" id="event-window-help">Time window to group photos from the same event</textarea>
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Visual Threshold Label</label>
+                    <input type="text" class="text-input" id="visual-threshold-label" value="Visual Similarity Threshold">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Visual Threshold Help</label>
+                    <textarea class="text-textarea" id="visual-threshold-help">Minimum similarity percentage to consider photos as duplicates</textarea>
+                </div>
+            </div>
+
+            <!-- Advanced Section -->
+            <div class="text-group">
+                <div class="text-group-title">⚙️ Advanced Settings</div>
+                <div class="text-field">
+                    <label class="text-label">Advanced Toggle Text</label>
+                    <input type="text" class="text-input" id="advanced-toggle" value="Advanced Settings">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Large File Label</label>
+                    <input type="text" class="text-input" id="large-file-label" value="Large File Threshold">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Location Distance Label</label>
+                    <input type="text" class="text-input" id="location-distance-label" value="Location Grouping Distance">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-group">
+                <div class="text-group-title">🔘 Action Buttons</div>
+                <div class="text-field">
+                    <label class="text-label">Apply Settings Button</label>
+                    <input type="text" class="text-input" id="apply-btn-text" value="Apply Settings">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Reset to Defaults Button</label>
+                    <input type="text" class="text-input" id="reset-btn-text" value="Reset to Defaults">
+                </div>
+                <div class="text-field">
+                    <label class="text-label">Cancel Button</label>
+                    <input type="text" class="text-input" id="cancel-btn-text" value="Cancel">
+                </div>
+            </div>
+
+            <!-- Export Controls -->
+            <div class="export-controls">
+                <button class="export-btn reset-btn" onclick="exportSettings()">💾 Export Changes</button>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importSettings(event)">
+                <button class="export-btn import-btn reset-btn" onclick="document.getElementById('import-file').click()">📂 Import Changes</button>
+                <button class="reset-btn" onclick="resetToDefaults()">🔄 Reset All Text</button>
+                <div style="font-size: 0.7rem; color: #718096; line-height: 1.3; margin-top: 12px;">
+                    Export creates a JSON file with all text customizations. Import loads previously saved changes.
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Interface -->
+        <div class="settings-container">
+            <div class="settings-header">
+                <h1 class="settings-title" id="settings-title-display">Algorithm Settings</h1>
+                <p class="settings-subtitle" id="settings-subtitle-display">Configure photo deduplication parameters</p>
+                <div class="close-icon">×</div>
+            </div>
+
+            <div class="settings-content">
+                <!-- Quick Presets Section -->
+                <div class="preset-section">
+                    <div class="section-header">
+                        <div class="section-icon">⚡</div>
+                        <div class="section-title" id="preset-title-display">Quick Presets</div>
+                    </div>
+                    <div class="preset-buttons">
+                        <div class="preset-btn" onclick="selectPreset('conservative')">
+                            <div id="preset-conservative-display">Conservative</div>
+                            <div class="preset-description" id="preset-conservative-desc-display">Minimize false positives</div>
+                        </div>
+                        <div class="preset-btn active" onclick="selectPreset('balanced')">
+                            <div id="preset-balanced-display">Balanced</div>
+                            <div class="preset-description" id="preset-balanced-desc-display">Current default settings</div>
+                        </div>
+                        <div class="preset-btn" onclick="selectPreset('aggressive')">
+                            <div id="preset-aggressive-display">Aggressive</div>
+                            <div class="preset-description" id="preset-aggressive-desc-display">Maximum detection</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Categories -->
+                <div class="settings-categories">
+                    <!-- Time-Based Grouping -->
+                    <div class="settings-category">
+                        <div class="category-header">
+                            <div class="category-icon time">⏰</div>
+                            <div class="category-title" id="category-time-display">Time-Based Grouping</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="burst-window-label-display">Photo Burst Time Window</label>
+                            <div class="form-help" id="burst-window-help-display">Time window to group photos taken in rapid succession</div>
+                            <div class="current-value" id="burst-window-value">10 seconds</div>
+                            <div class="range-container">
+                                <input type="range" class="range-input" id="burst-window-range" min="1" max="300" value="10" oninput="updateBurstWindow(this.value)">
+                                <div class="range-values">
+                                    <span>1 sec</span>
+                                    <span>300 sec</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="event-window-label-display">Event Grouping Time Window</label>
+                            <div class="form-help" id="event-window-help-display">Time window to group photos from the same event</div>
+                            <div class="current-value" id="event-window-value">30 seconds</div>
+                            <div class="range-container">
+                                <input type="range" class="range-input" id="event-window-range" min="10" max="600" value="30" oninput="updateEventWindow(this.value)">
+                                <div class="range-values">
+                                    <span>10 sec</span>
+                                    <span>600 sec</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="impact-indicator">
+                            ~2,500 photos will be affected by these time grouping settings
+                        </div>
+                    </div>
+
+                    <!-- Visual Similarity -->
+                    <div class="settings-category">
+                        <div class="category-header">
+                            <div class="category-icon visual">👁️</div>
+                            <div class="category-title" id="category-visual-display">Visual Similarity</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="visual-threshold-label-display">Visual Similarity Threshold</label>
+                            <div class="form-help" id="visual-threshold-help-display">Minimum similarity percentage to consider photos as duplicates</div>
+                            <div class="current-value" id="visual-threshold-value">50%</div>
+                            <div class="range-container">
+                                <input type="range" class="range-input" id="visual-threshold-range" min="30" max="95" value="50" oninput="updateVisualThreshold(this.value)">
+                                <div class="range-values">
+                                    <span>30%</span>
+                                    <span>95%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Visual Comparison Algorithm</label>
+                            <div class="form-help">Algorithm used for visual similarity detection</div>
+                            <select class="form-select" id="visual-algorithm">
+                                <option value="phash">Perceptual Hash (phash) - Default</option>
+                                <option value="ahash">Average Hash (ahash)</option>
+                                <option value="dhash">Difference Hash (dhash)</option>
+                                <option value="whash">Wavelet Hash (whash)</option>
+                            </select>
+                        </div>
+                        <div class="impact-indicator">
+                            ~1,800 potential duplicates detected with current settings
+                        </div>
+                    </div>
+
+                    <!-- Quality Scoring -->
+                    <div class="settings-category">
+                        <div class="category-header">
+                            <div class="category-icon quality">⭐</div>
+                            <div class="category-title" id="category-quality-display">Quality Scoring</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quality Scoring Weights</label>
+                            <div class="form-help">How much each factor contributes to overall quality score</div>
+                            <div class="weight-sliders">
+                                <div class="slider-group">
+                                    <div class="slider-label">Sharpness</div>
+                                    <div class="current-value" id="sharpness-value">40%</div>
+                                    <input type="range" class="range-input" id="sharpness-weight" min="0" max="100" value="40" oninput="updateWeight('sharpness', this.value)">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-label">Brightness</div>
+                                    <div class="current-value" id="brightness-value">20%</div>
+                                    <input type="range" class="range-input" id="brightness-weight" min="0" max="100" value="20" oninput="updateWeight('brightness', this.value)">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-label">Resolution</div>
+                                    <div class="current-value" id="resolution-value">20%</div>
+                                    <input type="range" class="range-input" id="resolution-weight" min="0" max="100" value="20" oninput="updateWeight('resolution', this.value)">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-label">Noise</div>
+                                    <div class="current-value" id="noise-value">20%</div>
+                                    <input type="range" class="range-input" id="noise-weight" min="0" max="100" value="20" oninput="updateWeight('noise', this.value)">
+                                </div>
+                            </div>
+                            <div style="text-align: center; margin-top: 12px; font-size: 0.8rem; color: #718096;">
+                                Total: <span id="total-weight">100%</span>
+                            </div>
+                        </div>
+                        <div class="impact-indicator">
+                            Quality scoring will affect ranking of ~4,200 photos
+                        </div>
+                    </div>
+
+                    <!-- Priority Classification -->
+                    <div class="settings-category">
+                        <div class="category-header">
+                            <div class="category-icon priority">🎯</div>
+                            <div class="category-title" id="category-priority-display">Priority Classification</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">P1 (Highest) Threshold</label>
+                            <div class="form-help">Minimum score for highest priority duplicates</div>
+                            <div class="current-value" id="p1-threshold-value">90</div>
+                            <div class="range-container">
+                                <input type="range" class="range-input" id="p1-threshold" min="50" max="100" value="90" oninput="updatePriorityThreshold('p1', this.value)">
+                                <div class="range-values">
+                                    <span>50</span>
+                                    <span>100</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">P2 Threshold</label>
+                            <div class="form-help">Minimum score for medium priority duplicates</div>
+                            <div class="current-value" id="p2-threshold-value">80</div>
+                            <div class="range-container">
+                                <input type="range" class="range-input" id="p2-threshold" min="50" max="100" value="80" oninput="updatePriorityThreshold('p2', this.value)">
+                                <div class="range-values">
+                                    <span>50</span>
+                                    <span>100</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">P3 Threshold</label>
+                            <div class="form-help">Minimum score for low priority duplicates</div>
+                            <div class="current-value" id="p3-threshold-value">70</div>
+                            <div class="range-container">
+                                <input type="range" class="range-input" id="p3-threshold" min="50" max="100" value="70" oninput="updatePriorityThreshold('p3', this.value)">
+                                <div class="range-values">
+                                    <span>50</span>
+                                    <span>100</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="impact-indicator">
+                            Current thresholds will classify ~600 P1, ~800 P2, and ~400 P3 duplicates
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings -->
+                <div class="advanced-section">
+                    <button class="advanced-toggle" onclick="toggleAdvanced()">
+                        <span id="advanced-toggle-display">Advanced Settings</span>
+                        <span class="toggle-icon" id="toggle-icon">▼</span>
+                    </button>
+                    <div class="advanced-content" id="advanced-content">
+                        <div class="advanced-inner">
+                            <div class="settings-categories">
+                                <div class="settings-category">
+                                    <div class="form-group">
+                                        <label class="form-label" id="large-file-label-display">Large File Threshold</label>
+                                        <div class="form-help">Files larger than this size get special handling</div>
+                                        <div class="current-value" id="large-file-value">10 MB</div>
+                                        <div class="range-container">
+                                            <input type="range" class="range-input" id="large-file-threshold" min="1" max="50" value="10" oninput="updateLargeFileThreshold(this.value)">
+                                            <div class="range-values">
+                                                <span>1 MB</span>
+                                                <span>50 MB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" id="location-distance-label-display">Location Grouping Distance</label>
+                                        <div class="form-help">Photos taken within this distance are grouped together</div>
+                                        <div class="current-value" id="location-distance-value">100 meters</div>
+                                        <div class="range-container">
+                                            <input type="range" class="range-input" id="location-distance" min="10" max="1000" value="100" oninput="updateLocationDistance(this.value)">
+                                            <div class="range-values">
+                                                <span>10m</span>
+                                                <span>1km</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Organization Weight in Quality</label>
+                                        <div class="form-help">Bonus points for well-organized photos</div>
+                                        <div class="current-value" id="organization-weight-value">25 points</div>
+                                        <div class="range-container">
+                                            <input type="range" class="range-input" id="organization-weight" min="0" max="50" value="25" oninput="updateOrganizationWeight(this.value)">
+                                            <div class="range-values">
+                                                <span>0 pts</span>
+                                                <span>50 pts</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="action-btn btn-primary" onclick="applySettings()">
+                    <span>✅</span>
+                    <span id="apply-btn-text-display">Apply Settings</span>
+                </button>
+                <button class="action-btn btn-reset" onclick="resetSettings()">
+                    <span>🔄</span>
+                    <span id="reset-btn-text-display">Reset to Defaults</span>
+                </button>
+                <button class="action-btn btn-secondary" onclick="cancelSettings()">
+                    <span>❌</span>
+                    <span id="cancel-btn-text-display">Cancel</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state for settings
+        let currentSettings = {
+            preset: 'balanced',
+            burstWindow: 10,
+            eventWindow: 30,
+            visualThreshold: 50,
+            visualAlgorithm: 'phash',
+            weights: { sharpness: 40, brightness: 20, resolution: 20, noise: 20 },
+            priorities: { p1: 90, p2: 80, p3: 70 },
+            advanced: { largeFile: 10, locationDistance: 100, organizationWeight: 25 }
+        };
+
+        // Text editing functionality
+        function setupTextEditing() {
+            const textMappings = {
+                'settings-title': 'settings-title-display',
+                'settings-subtitle': 'settings-subtitle-display',
+                'preset-title': 'preset-title-display',
+                'preset-conservative': 'preset-conservative-display',
+                'preset-conservative-desc': 'preset-conservative-desc-display',
+                'preset-balanced': 'preset-balanced-display',
+                'preset-balanced-desc': 'preset-balanced-desc-display',
+                'preset-aggressive': 'preset-aggressive-display',
+                'preset-aggressive-desc': 'preset-aggressive-desc-display',
+                'category-time': 'category-time-display',
+                'category-visual': 'category-visual-display',
+                'category-quality': 'category-quality-display',
+                'category-priority': 'category-priority-display',
+                'burst-window-label': 'burst-window-label-display',
+                'burst-window-help': 'burst-window-help-display',
+                'event-window-label': 'event-window-label-display',
+                'event-window-help': 'event-window-help-display',
+                'visual-threshold-label': 'visual-threshold-label-display',
+                'visual-threshold-help': 'visual-threshold-help-display',
+                'advanced-toggle': 'advanced-toggle-display',
+                'large-file-label': 'large-file-label-display',
+                'location-distance-label': 'location-distance-label-display',
+                'apply-btn-text': 'apply-btn-text-display',
+                'reset-btn-text': 'reset-btn-text-display',
+                'cancel-btn-text': 'cancel-btn-text-display'
+            };
+            
+            Object.keys(textMappings).forEach(inputId => {
+                const input = document.getElementById(inputId);
+                const display = document.getElementById(textMappings[inputId]);
+                
+                if (input && display) {
+                    input.addEventListener('input', () => {
+                        display.textContent = input.value;
+                    });
+                }
+            });
+        }
+
+        // Preset selection
+        function selectPreset(preset) {
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            currentSettings.preset = preset;
+            
+            // Update settings based on preset
+            if (preset === 'conservative') {
+                updateSliderValue('visual-threshold-range', 70, 'visual-threshold-value', '%');
+                updateSliderValue('p1-threshold', 95, 'p1-threshold-value', '');
+                updateSliderValue('p2-threshold', 85, 'p2-threshold-value', '');
+                updateSliderValue('p3-threshold', 75, 'p3-threshold-value', '');
+            } else if (preset === 'aggressive') {
+                updateSliderValue('visual-threshold-range', 35, 'visual-threshold-value', '%');
+                updateSliderValue('p1-threshold', 85, 'p1-threshold-value', '');
+                updateSliderValue('p2-threshold', 75, 'p2-threshold-value', '');
+                updateSliderValue('p3-threshold', 65, 'p3-threshold-value', '');
+            } else {
+                // Balanced defaults
+                updateSliderValue('visual-threshold-range', 50, 'visual-threshold-value', '%');
+                updateSliderValue('p1-threshold', 90, 'p1-threshold-value', '');
+                updateSliderValue('p2-threshold', 80, 'p2-threshold-value', '');
+                updateSliderValue('p3-threshold', 70, 'p3-threshold-value', '');
+            }
+        }
+
+        // Slider update functions
+        function updateSliderValue(sliderId, value, displayId, suffix) {
+            const slider = document.getElementById(sliderId);
+            const display = document.getElementById(displayId);
+            if (slider && display) {
+                slider.value = value;
+                display.textContent = value + suffix;
+            }
+        }
+
+        function updateBurstWindow(value) {
+            document.getElementById('burst-window-value').textContent = value + ' seconds';
+            currentSettings.burstWindow = parseInt(value);
+        }
+
+        function updateEventWindow(value) {
+            document.getElementById('event-window-value').textContent = value + ' seconds';
+            currentSettings.eventWindow = parseInt(value);
+        }
+
+        function updateVisualThreshold(value) {
+            document.getElementById('visual-threshold-value').textContent = value + '%';
+            currentSettings.visualThreshold = parseInt(value);
+        }
+
+        function updateWeight(type, value) {
+            document.getElementById(type + '-value').textContent = value + '%';
+            currentSettings.weights[type] = parseInt(value);
+            
+            // Update total weight display
+            const total = Object.values(currentSettings.weights).reduce((sum, weight) => sum + weight, 0);
+            document.getElementById('total-weight').textContent = total + '%';
+        }
+
+        function updatePriorityThreshold(priority, value) {
+            document.getElementById(priority + '-threshold-value').textContent = value;
+            currentSettings.priorities[priority] = parseInt(value);
+        }
+
+        function updateLargeFileThreshold(value) {
+            document.getElementById('large-file-value').textContent = value + ' MB';
+            currentSettings.advanced.largeFile = parseInt(value);
+        }
+
+        function updateLocationDistance(value) {
+            const displayValue = value >= 1000 ? (value / 1000).toFixed(1) + ' km' : value + ' meters';
+            document.getElementById('location-distance-value').textContent = displayValue;
+            currentSettings.advanced.locationDistance = parseInt(value);
+        }
+
+        function updateOrganizationWeight(value) {
+            document.getElementById('organization-weight-value').textContent = value + ' points';
+            currentSettings.advanced.organizationWeight = parseInt(value);
+        }
+
+        // Advanced section toggle
+        function toggleAdvanced() {
+            const content = document.getElementById('advanced-content');
+            const icon = document.getElementById('toggle-icon');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                icon.textContent = '▲';
+            }
+        }
+
+        // Action buttons
+        function applySettings() {
+            alert('✅ Settings applied successfully!\n\nConfiguration saved and ready for analysis.');
+        }
+
+        function resetSettings() {
+            if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                // Reset all sliders to defaults
+                updateSliderValue('burst-window-range', 10, 'burst-window-value', ' seconds');
+                updateSliderValue('event-window-range', 30, 'event-window-value', ' seconds');
+                updateSliderValue('visual-threshold-range', 50, 'visual-threshold-value', '%');
+                
+                // Reset weights
+                updateSliderValue('sharpness-weight', 40, 'sharpness-value', '%');
+                updateSliderValue('brightness-weight', 20, 'brightness-value', '%');
+                updateSliderValue('resolution-weight', 20, 'resolution-value', '%');
+                updateSliderValue('noise-weight', 20, 'noise-value', '%');
+                
+                // Reset priorities
+                updateSliderValue('p1-threshold', 90, 'p1-threshold-value', '');
+                updateSliderValue('p2-threshold', 80, 'p2-threshold-value', '');
+                updateSliderValue('p3-threshold', 70, 'p3-threshold-value', '');
+                
+                // Reset advanced
+                updateSliderValue('large-file-threshold', 10, 'large-file-value', ' MB');
+                updateSliderValue('location-distance', 100, 'location-distance-value', ' meters');
+                updateSliderValue('organization-weight', 25, 'organization-weight-value', ' points');
+                
+                // Reset preset to balanced
+                selectPreset('balanced');
+                
+                alert('🔄 All settings reset to defaults');
+            }
+        }
+
+        function cancelSettings() {
+            if (confirm('Cancel changes and close settings?')) {
+                alert('❌ Settings cancelled. No changes were saved.');
+            }
+        }
+
+        // Export/Import functionality
+        function exportSettings() {
+            const settings = {
+                exportDate: new Date().toISOString(),
+                wireframeType: 'photo-dedup-settings',
+                version: '1.0',
+                textContent: {},
+                algorithmSettings: currentSettings
+            };
+            
+            // Collect all text input values
+            const textInputIds = [
+                'settings-title', 'settings-subtitle', 'preset-title',
+                'preset-conservative', 'preset-conservative-desc',
+                'preset-balanced', 'preset-balanced-desc',
+                'preset-aggressive', 'preset-aggressive-desc',
+                'category-time', 'category-visual', 'category-quality', 'category-priority',
+                'burst-window-label', 'burst-window-help',
+                'event-window-label', 'event-window-help',
+                'visual-threshold-label', 'visual-threshold-help',
+                'advanced-toggle', 'large-file-label', 'location-distance-label',
+                'apply-btn-text', 'reset-btn-text', 'cancel-btn-text'
+            ];
+            
+            textInputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    settings.textContent[id] = input.value;
+                }
+            });
+            
+            // Create and download JSON file
+            const dataStr = JSON.stringify(settings, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `photo-dedup-settings-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Settings and text changes exported!');
+        }
+
+        function importSettings(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const settings = JSON.parse(e.target.result);
+                    
+                    if (settings.wireframeType !== 'photo-dedup-settings') {
+                        alert('❌ This file is not for the photo deduplication settings.');
+                        return;
+                    }
+                    
+                    // Apply imported text content
+                    if (settings.textContent) {
+                        Object.keys(settings.textContent).forEach(id => {
+                            const input = document.getElementById(id);
+                            const displayId = id + '-display';
+                            const display = document.getElementById(displayId) || 
+                                          document.getElementById(id.replace(/-([^-]*)$/, '-$1-display'));
+                            
+                            if (input) {
+                                input.value = settings.textContent[id];
+                                if (display) {
+                                    display.textContent = settings.textContent[id];
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Apply algorithm settings if present
+                    if (settings.algorithmSettings) {
+                        currentSettings = settings.algorithmSettings;
+                        // Update UI to reflect imported settings
+                        // This would require more detailed implementation
+                    }
+                    
+                    alert(`✅ Settings imported from ${new Date(settings.exportDate).toLocaleDateString()}`);
+                } catch (error) {
+                    alert('❌ Error reading file. Please check the file format.');
+                    console.error('Import error:', error);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        function resetToDefaults() {
+            if (confirm('Reset all text to default values?')) {
+                const defaults = {
+                    'settings-title': 'Algorithm Settings',
+                    'settings-subtitle': 'Configure photo deduplication parameters',
+                    'preset-title': 'Quick Presets',
+                    'preset-conservative': 'Conservative',
+                    'preset-conservative-desc': 'Minimize false positives',
+                    'preset-balanced': 'Balanced',
+                    'preset-balanced-desc': 'Current default settings',
+                    'preset-aggressive': 'Aggressive',
+                    'preset-aggressive-desc': 'Maximum detection',
+                    'category-time': 'Time-Based Grouping',
+                    'category-visual': 'Visual Similarity',
+                    'category-quality': 'Quality Scoring',
+                    'category-priority': 'Priority Classification',
+                    'burst-window-label': 'Photo Burst Time Window',
+                    'burst-window-help': 'Time window to group photos taken in rapid succession',
+                    'event-window-label': 'Event Grouping Time Window',
+                    'event-window-help': 'Time window to group photos from the same event',
+                    'visual-threshold-label': 'Visual Similarity Threshold',
+                    'visual-threshold-help': 'Minimum similarity percentage to consider photos as duplicates',
+                    'advanced-toggle': 'Advanced Settings',
+                    'large-file-label': 'Large File Threshold',
+                    'location-distance-label': 'Location Grouping Distance',
+                    'apply-btn-text': 'Apply Settings',
+                    'reset-btn-text': 'Reset to Defaults',
+                    'cancel-btn-text': 'Cancel'
+                };
+                
+                Object.keys(defaults).forEach(id => {
+                    const input = document.getElementById(id);
+                    const displayId = id + '-display';
+                    const display = document.getElementById(displayId) || 
+                                  document.getElementById(id.replace(/-([^-]*)$/, '-$1-display'));
+                    
+                    if (input) {
+                        input.value = defaults[id];
+                        if (display) {
+                            display.textContent = defaults[id];
+                        }
+                    }
+                });
+                
+                alert('🔄 All text reset to defaults');
+            }
+        }
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            setupTextEditing();
+            
+            // Set initial balanced preset as active
+            document.querySelector('.preset-btn:nth-child(2)').classList.add('active');
+        });
+
+        // Stop background server
+        window.addEventListener('beforeunload', function() {
+            fetch('/shutdown', {method: 'POST'}).catch(() => {});
+        });
+    </script>
+</body>
+</html>

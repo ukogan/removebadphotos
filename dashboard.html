@@ -500,19 +500,19 @@
             
             // Update library stats
             document.getElementById('total-photos').textContent = stats.total_photos.toLocaleString();
-            document.getElementById('library-size').textContent = stats.total_size_gb ? `${stats.total_size_gb.toFixed(1)} GB` : 'TBD';
-            document.getElementById('estimated-duplicates').textContent = (stats.estimated_duplicates || 'TBD');
-            document.getElementById('potential-savings').textContent = (stats.potential_savings_gb && typeof stats.potential_savings_gb === 'number') ? `~${stats.potential_savings_gb.toFixed(1)} GB` : 'TBD';
+            document.getElementById('library-size').textContent = stats.total_size_gb ? `${stats.total_size_gb.toFixed(1)} GB` : 'Calculating...';
+            document.getElementById('estimated-duplicates').textContent = (stats.estimated_duplicates || 'Run analysis');
+            document.getElementById('potential-savings').textContent = (stats.potential_savings_gb && typeof stats.potential_savings_gb === 'number') ? `~${stats.potential_savings_gb.toFixed(1)} GB` : 'Run analysis';
             
             if (stats.date_range_start && stats.date_range_end) {
                 const startYear = new Date(stats.date_range_start).getFullYear();
                 const endYear = new Date(stats.date_range_end).getFullYear();
                 document.getElementById('date-range').textContent = `${startYear}-${endYear}`;
             } else {
-                document.getElementById('date-range').textContent = 'TBD';
+                document.getElementById('date-range').textContent = 'All dates';
             }
             
-            document.getElementById('cluster-count').textContent = (stats.potential_groups || 'TBD');
+            document.getElementById('cluster-count').textContent = (stats.potential_groups || 'Run analysis');
             
             // Update cameras if available
             if (stats.camera_models && stats.camera_models.length > 0) {
@@ -554,7 +554,7 @@
                 const endYear = new Date(stats.date_range_end).getFullYear();
                 document.getElementById('date-range').textContent = `${startYear}-${endYear}`;
             } else {
-                document.getElementById('date-range').textContent = 'TBD';
+                document.getElementById('date-range').textContent = 'All dates';
             }
             
             document.getElementById('cluster-count').textContent = filterSession.total_clusters_in_filter + ' targeted';

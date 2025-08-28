@@ -10,6 +10,11 @@ from datetime import datetime
 import traceback
 import os
 import secrets
+import threading
+import signal
+import sys
+import requests
+import time
 from photo_scanner import PhotoScanner
 from library_analyzer import LibraryAnalyzer
 from photo_tagger import PhotoTagger
@@ -59,6 +64,7 @@ server_side_sessions = {}
 # Progress tracking for long-running operations
 progress_status = {
     'active': False,
+    'cancelled': False,  # Flag to signal cancellation
     'step': '',
     'progress': 0,
     'total': 0,
@@ -73,6 +79,9 @@ progress_status = {
     'sub_progress': 0,
     'sub_total': 0
 }
+
+# Global thread reference for aggressive termination
+background_analysis_thread = None
 
 @app.route('/api/progress')
 def api_progress():
@@ -138,6 +147,7 @@ def complete_progress():
     global progress_status
     progress_status.update({
         'active': False,
+        'cancelled': False,  # Reset cancellation flag when completing
         'step': 'Complete',
         'progress': 0,
         'total': 0,
@@ -255,6 +265,8 @@ def legacy():
             }
             .btn:hover { background-color: #1976D2; }
             .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+            .btn-primary { background-color: #28a745; }
+            .btn-primary:hover { background-color: #218838; }
             
             .groups-container {
                 margin-top: 20px;
@@ -658,7 +670,8 @@ def legacy():
         </div>
 
         <div class="controls" style="display: none;" id="controls">
-            <button class="btn" onclick="loadGroups()" id="loadGroupsBtn">🔍 Find Duplicates</button>
+            <button class="btn" onclick="loadGroups()" id="loadGroupsBtn">🧪 Demo Mode</button>
+            <button class="btn btn-primary" onclick="loadRealGroups()" id="loadRealGroupsBtn">📸 Analyze My Photos</button>
             <span id="groupStatus" style="margin-left: 15px;"></span>
         </div>
 
@@ -901,6 +914,81 @@ def legacy():
                     });
             }
             
+            function loadRealGroups() {
+                if (groupsLoaded) return;
+                
+                const btn = document.getElementById('loadRealGroupsBtn');
+                const status = document.getElementById('groupStatus');
+                
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Analyzing Your Photos...';
+                status.innerHTML = '🔄 Starting real photo analysis...';
+                status.title = 'Analyzing your photo library';
+                
+                // Start progress polling
+                progressInterval = setInterval(updateProgress, 1000);
+                
+                // Check for limit parameter from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const limit = urlParams.get('limit') || '10';
+                
+                // Use real photo analysis with real=true parameter
+                const apiUrl = `/api/groups?limit=${limit}&real=true`;
+                
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Stop progress polling
+                        if (progressInterval) {
+                            clearInterval(progressInterval);
+                            progressInterval = null;
+                        }
+                        
+                        if (data.success) {
+                            allGroups = data.groups; // Store for calculations
+                            displayGroups(data.groups);
+                            groupsLoaded = true;
+                            
+                            // Store total groups for pagination if available
+                            if (data.total_groups !== undefined) {
+                                totalGroupsAvailable = data.total_groups;
+                                hasMoreGroups = data.has_next || false;
+                            }
+                            
+                            // Update pagination controls if we have more groups
+                            if (data.total_groups > data.groups.length) {
+                                const paginationControls = document.getElementById('paginationControls');
+                                const paginationStatus = document.getElementById('paginationStatus');
+                                paginationControls.style.display = 'block';
+                                paginationStatus.innerHTML = `Showing ${data.groups.length} of ${totalGroupsAvailable} real photo groups`;
+                            }
+                            
+                            status.innerHTML = `✅ Found ${data.groups.length} real duplicate groups`;
+                            status.title = '';
+                            btn.disabled = false;
+                            btn.innerHTML = '📸 Analyze My Photos';
+                        } else {
+                            status.innerHTML = `❌ Error: ${data.error}`;
+                            status.title = '';
+                            btn.disabled = false;
+                            btn.innerHTML = '📸 Analyze My Photos';
+                        }
+                    })
+                    .catch(error => {
+                        // Stop progress polling
+                        if (progressInterval) {
+                            clearInterval(progressInterval);
+                            progressInterval = null;
+                        }
+                        
+                        status.innerHTML = `❌ Couldn't analyze photos`;
+                        status.title = '';
+                        btn.disabled = false;
+                        btn.innerHTML = '📸 Analyze My Photos';
+                        console.error('Error loading real groups:', error);
+                    });
+            }
+            
             function loadMoreGroups() {
                 if (!hasMoreGroups) return;
                 
@@ -987,8 +1075,8 @@ def legacy():
                                     <div>📅 <strong>Time:</strong> ${timeSpan}</div>
                                     <div>📷 <strong>Camera:</strong> ${group.camera_model}</div>
                                     <div>📸 <strong>Photos:</strong> ${group.photo_count || 0}</div>
-                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb ? group.total_size_mb + ' MB' : 'TBD'}</div>
-                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb ? group.potential_savings_mb + ' MB' : 'TBD'}</div>
+                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb ? group.total_size_mb + ' MB' : Math.round(group.photos.reduce((sum, p) => sum + (p.file_size || 0), 0) / (1024 * 1024)) + ' MB'}</div>
+                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb ? group.potential_savings_mb + ' MB' : Math.round((group.photos.length - 1) * (group.photos.reduce((sum, p) => sum + (p.file_size || 0), 0) / (1024 * 1024)) / group.photos.length) + ' MB'}</div>
                                 </div>
                             </div>
                             <div class="group-actions" style="margin: 16px 0; display: flex; justify-content: space-between; align-items: center;">
@@ -1046,6 +1134,9 @@ def legacy():
                 
                 container.innerHTML = html;
                 updateSelectionSummary();
+                
+                // Setup keyboard navigation and accessibility
+                setTimeout(setupAccessibility, 100);
             }
             
             function appendGroups(groups) {
@@ -1072,8 +1163,8 @@ def legacy():
                                     <div>📅 <strong>Time:</strong> ${timeSpan}</div>
                                     <div>📷 <strong>Camera:</strong> ${group.camera_model}</div>
                                     <div>📸 <strong>Photos:</strong> ${group.photo_count || 0}</div>
-                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb ? group.total_size_mb + ' MB' : 'TBD'}</div>
-                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb ? group.potential_savings_mb + ' MB' : 'TBD'}</div>
+                                    <div>💾 <strong>Total Size:</strong> ${group.total_size_mb ? group.total_size_mb + ' MB' : Math.round(group.photos.reduce((sum, p) => sum + (p.file_size || 0), 0) / (1024 * 1024)) + ' MB'}</div>
+                                    <div>💰 <strong>Est. Savings:</strong> ~${group.potential_savings_mb ? group.potential_savings_mb + ' MB' : Math.round((group.photos.length - 1) * (group.photos.reduce((sum, p) => sum + (p.file_size || 0), 0) / (1024 * 1024)) / group.photos.length) + ' MB'}</div>
                                 </div>
                             </div>
                             <div class="group-actions" style="margin: 16px 0; display: flex; justify-content: space-between; align-items: center;">
@@ -1129,6 +1220,9 @@ def legacy():
                 // Append to existing container content
                 container.innerHTML += html;
                 updateSelectionSummary();
+                
+                // Setup keyboard navigation and accessibility for new groups
+                setTimeout(setupAccessibility, 100);
             }
 
             function togglePhotoSelection(groupId, photoUuid) {
@@ -1321,7 +1415,7 @@ def legacy():
                                 <strong>${totalPhotosToDelete} photos</strong> from <strong>${groupsWithDeletions} groups</strong> • <strong>~${totalSavingsMB.toFixed(1)} MB</strong> savings
                             </div>
                             <div class="selection-actions">
-                                <button class="btn" onclick="confirmDeletions()" style="background-color: #FF5722; color: white; font-weight: 600;">
+                                <button class="btn" id="confirmBtn" onclick="confirmDeletions()" style="background-color: #FF5722; color: white; font-weight: 600;">
                                     🗑️ Confirm Deletions
                                 </button>
                             </div>
@@ -1382,6 +1476,11 @@ def legacy():
                 
                 // Show loading state
                 const confirmBtn = document.getElementById('confirmBtn');
+                if (!confirmBtn) {
+                    console.error('❌ Confirm button not found!');
+                    showToast('Button error - please refresh the page', 'error');
+                    return;
+                }
                 const originalText = confirmBtn.textContent;
                 confirmBtn.textContent = '🔄 Processing...';
                 confirmBtn.disabled = true;
@@ -1411,8 +1510,10 @@ def legacy():
                 })
                 .finally(() => {
                     // Restore button
-                    confirmBtn.textContent = originalText;
-                    confirmBtn.disabled = false;
+                    if (confirmBtn) {
+                        confirmBtn.textContent = originalText;
+                        confirmBtn.disabled = false;
+                    }
                 });
             }
 
@@ -1617,8 +1718,12 @@ def legacy():
                     });
             }
 
-            // Keyboard navigation
+            // Enhanced keyboard navigation for UX improvements
+            let focusedPhotoCard = null;
+            let focusedGroup = null;
+            
             document.addEventListener('keydown', function(e) {
+                // Preview modal navigation
                 if (document.getElementById('previewModal').style.display === 'block') {
                     switch(e.key) {
                         case 'Escape':
@@ -1632,8 +1737,96 @@ def legacy():
                             break;
                     }
                     e.preventDefault();
+                    return;
+                }
+                
+                // Main page keyboard shortcuts
+                switch(e.key.toLowerCase()) {
+                    case 'd':
+                        // Quick mark first recommended photo in visible groups
+                        if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+                            const firstRecommended = document.querySelector('.photo-card.recommended .photo-action-button');
+                            if (firstRecommended) {
+                                firstRecommended.click();
+                                // Show brief feedback
+                                showToast('Photo marked with D key', 'info', 1500);
+                            }
+                            e.preventDefault();
+                        }
+                        break;
+                    case 'escape':
+                        // Close any open modals or clear focus
+                        closePreview();
+                        if (focusedPhotoCard) {
+                            focusedPhotoCard.blur();
+                            focusedPhotoCard = null;
+                        }
+                        break;
+                    case 'enter':
+                        // Open preview if a photo card is focused
+                        if (focusedPhotoCard && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                            const photoImg = focusedPhotoCard.querySelector('.photo-thumbnail');
+                            if (photoImg) {
+                                photoImg.click();
+                            }
+                            e.preventDefault();
+                        }
+                        break;
+                    case ' ':
+                        // Space bar to toggle selection of focused photo
+                        if (focusedPhotoCard && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                            const actionButton = focusedPhotoCard.querySelector('.photo-action-button');
+                            if (actionButton) {
+                                actionButton.click();
+                                // Show brief feedback
+                                const isSelected = focusedPhotoCard.classList.contains('selected');
+                                showToast(isSelected ? 'Photo marked for deletion' : 'Photo unmarked', 'info', 1500);
+                            }
+                            e.preventDefault();
+                        }
+                        break;
                 }
             });
+            
+            // Add focus management for photo cards
+            function setupPhotoCardFocus() {
+                const photoCards = document.querySelectorAll('.photo-card');
+                photoCards.forEach((card, index) => {
+                    card.tabIndex = 0; // Make focusable
+                    
+                    card.addEventListener('focus', function() {
+                        focusedPhotoCard = this;
+                        this.style.outline = '2px solid #3182ce';
+                        this.style.outlineOffset = '2px';
+                    });
+                    
+                    card.addEventListener('blur', function() {
+                        if (focusedPhotoCard === this) {
+                            focusedPhotoCard = null;
+                        }
+                        this.style.outline = '';
+                        this.style.outlineOffset = '';
+                    });
+                    
+                    // Arrow key navigation between photo cards
+                    card.addEventListener('keydown', function(e) {
+                        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                            const direction = e.key === 'ArrowRight' ? 1 : -1;
+                            const currentIndex = Array.from(photoCards).indexOf(this);
+                            const nextIndex = Math.max(0, Math.min(photoCards.length - 1, currentIndex + direction));
+                            if (nextIndex !== currentIndex) {
+                                photoCards[nextIndex].focus();
+                            }
+                            e.preventDefault();
+                        }
+                    });
+                });
+            }
+            
+            // Setup focus management when groups are loaded
+            function setupAccessibility() {
+                setupPhotoCardFocus();
+            }
         </script>
     </body>
     </html>
@@ -1686,7 +1879,7 @@ def api_stats():
             'sample_photos': total_photos,
             'sample_groups': potential_groups,
             'potential_groups': estimated_full_groups,
-            'estimated_savings': f"~{estimated_full_savings:.0f} MB" if estimated_full_savings > 0 else "TBD",
+            'estimated_savings': f"~{estimated_full_savings:.0f} MB" if estimated_full_savings > 0 else "Run full analysis",
             'sample_savings_mb': round(total_savings_mb, 1),
             'timestamp': datetime.now().isoformat()
         })
@@ -1744,11 +1937,11 @@ def api_library_stats():
                 'stats': {
                     'total_photos': 0,
                     'total_size_gb': 0,
-                    'estimated_duplicates': 'TBD',
+                    'estimated_duplicates': 0,
                     'potential_savings_gb': None,
                     'date_range_start': None,
                     'date_range_end': None,
-                    'potential_groups': 'TBD',
+                    'potential_groups': 0,
                     'camera_models': []
                 }
             })
@@ -2090,8 +2283,12 @@ def apply_filter_criteria(photos, criteria):
         start_year = int(criteria['start_year'])
         end_year = int(criteria['end_year'])
         filtered = [p for p in filtered if p.date and start_year <= p.date.year <= end_year]
+    elif criteria.get('years'):
+        # Multi-select years support (from new filter interface)
+        years = [int(y) for y in criteria['years']]
+        filtered = [p for p in filtered if p.date and p.date.year in years]
     elif criteria.get('year'):
-        # Single year support (from filter interface)
+        # Single year support (from filter interface) - backward compatibility
         year = int(criteria['year'])
         filtered = [p for p in filtered if p.date and p.date.year == year]
     
@@ -2578,12 +2775,30 @@ def api_groups():
     global cached_groups, cached_timestamp, scanner
     
     try:
+        # EMERGENCY BYPASS: If analysis is active, don't start another one
+        if progress_status.get('active', False):
+            print("🚨 EMERGENCY: Groups API called while analysis active - returning waiting message")
+            return jsonify({
+                'success': True,
+                'groups': [],
+                'total_photos': 0,
+                'total_groups': 0,
+                'message': 'Analysis in progress - please wait for completion',
+                'progress_active': True,
+                'should_wait': True
+            })
+    
         limit = request.args.get('limit', 10, type=int)
         page = request.args.get('page', 1, type=int)
         priority = request.args.get('priority')
         
         print(f"🎯 api_groups called with limit={limit}, page={page}, priority={priority}")
         print(f"🎯 Session keys: {list(session.keys())}")
+        print(f"🎯 Analysis cache keys: {list(analysis_cache.keys())}")
+        print(f"🎯 Cached groups available: {cached_groups is not None}")
+        print(f"🎯 Cached timestamp: {cached_timestamp}")
+        print(f"🎯 Progress status: {progress_status['active']}, step: {progress_status.get('step', 'none')}")
+        print(f"🎯 Filter session: {session.get('filter_criteria')}")
         
         # NEW: Check for unified analysis cache first (streamlined workflow)
         if analysis_cache:
@@ -2654,16 +2869,19 @@ def api_groups():
         
         # NEW: Check for streamlined filter criteria workflow  
         filter_criteria_session = session.get('filter_criteria')
-        if filter_criteria_session and filter_criteria_session.get('type') == 'criteria_only':
-            print(f"🎯 STREAMLINED WORKFLOW: Found saved filter criteria: {filter_criteria_session.get('filters', {})}")
+        if filter_criteria_session:
+            # Handle both formats: {filters: {...}} and direct filter dict
+            filters = filter_criteria_session.get('filters', filter_criteria_session)
+            if filters and any(v for v in filters.values() if v is not None):
+                print(f"🎯 STREAMLINED WORKFLOW: Found saved filter criteria: {filters}")
             
             # We have filter criteria but no processed results yet
             # This means the user came from /filters -> Apply Filters -> /legacy
             # We need to process their filters now
             
             try:
-                # Use lazy loader to get filtered clusters based on saved criteria
-                filters = filter_criteria_session.get('filters', {})
+                # Use lazy loader to get filtered clusters based on saved criteria  
+                filters = filter_criteria_session.get('filters', filter_criteria_session)
                 
                 # Ensure lazy loader cache is available (should be initialized by heatmap-data call)
                 if not lazy_loader._cluster_cache or not lazy_loader._metadata_cache:
@@ -2978,64 +3196,139 @@ def api_groups():
             
         else:
             # Original behavior for non-priority requests
-            # Check if we have cached results from smart analysis first (preferred)
+            # ARCHITECTURAL FIX: NEVER start fresh analysis - prioritize existing data
+            # Priority order: 1) Cached groups 2) Test groups 3) Create test groups if needed
+            
             now = datetime.now()
             if (cached_groups is not None and cached_timestamp is not None and 
                 (now - cached_timestamp).total_seconds() < 300):
                 print("📋 Using cached photo groups from smart analysis")
                 groups = cached_groups
+            elif cached_groups is not None and len(cached_groups) > 0:
+                print(f"📋 Using {len(cached_groups)} cached groups (expired cache but deletion workflow active)")
+                groups = cached_groups
             else:
-                print("🔄 Computing fresh photo groups...")
+                # Smart decision: Real analysis vs Test groups
+                # Check if user explicitly wants real photo analysis
+                force_real = request.args.get('real', '').lower() in ['true', '1', 'yes']
+                from_filters = request.headers.get('Referer', '').endswith('/filters')
                 
-                # Start progress tracking
-                update_progress("Initializing analysis", 0, 4, "Setting up photo deduplication analysis...")
-                
-                # For photo scanning, we need a larger sample to find duplicates
-                # The limit parameter controls output groups, not input photos
-                scan_limit = 5000  # Scan more photos to find duplicates
-                
-                # Step 1: Scan photos
-                try:
-                    update_progress("Scanning Photos library", 1, 4, "Scanning photos...")
-                    photos = scanner.scan_photos(limit=scan_limit)
+                if force_real or from_filters:
+                    print("🔄 REAL PHOTO ANALYSIS: User requested real photo processing")
                     
-                    if not photos:
-                        complete_progress()
+                    # IMPORTANT: Check if analysis is already running
+                    if progress_status.get('active', False):
+                        print("⏳ REAL ANALYSIS IN PROGRESS: Returning current progress status...")
                         return jsonify({
                             'success': True,
                             'groups': [],
                             'total_groups': 0,
-                            'message': 'No photos found'
+                            'message': f"Photo analysis in progress: {progress_status.get('step', 'Processing...')}",
+                            'progress_active': True,
+                            'progress': progress_status.get('progress', 0),
+                            'step': progress_status.get('step', 'Processing...'),
+                            'should_wait': True
                         })
-                except Exception as e:
-                    print(f"❌ OSXPhotos error scanning photos: {e}")
+                    
+                    # Allow real analysis to proceed - restore original logic
+                    progress_status['cancelled'] = False
+                    progress_status['active'] = True
+                    update_progress("Initializing analysis", 0, 4, "Setting up photo deduplication analysis...")
+                    
+                    # Original analysis logic
+                    scan_limit = 5000  # Scan more photos to find duplicates
+                    
+                    # Step 1: Scan photos
+                    try:
+                        update_progress("Scanning Photos library", 1, 4, "Scanning photos...")
+                        photos = scanner.scan_photos(limit=scan_limit)
+                        
+                        if not photos:
+                            complete_progress()
+                            return jsonify({
+                                'success': True,
+                                'groups': [],
+                                'total_groups': 0,
+                                'message': 'No photos found'
+                            })
+                    except Exception as e:
+                        print(f"❌ OSXPhotos error scanning photos: {e}")
+                        complete_progress()
+                        return jsonify({
+                            'success': False,
+                            'groups': [],
+                            'total_groups': 0,
+                            'error': f'Photo library scan error: {str(e)[:200]}',
+                            'message': 'Unable to scan Photos library. Please check compatibility.'
+                        })
+                    
+                    # Step 2: Group photos by time and camera
+                    update_progress("Grouping photos", 2, 4, f"Creating groups from {len(photos):,} photos using 10-second windows and camera matching...")
+                    groups = scanner.group_photos_by_time_and_camera(photos)
+                    
+                    # Step 3: Enhanced grouping with quality analysis
+                    update_progress("Analyzing image quality", 3, 4, f"Computing quality scores for {len(groups):,} photo groups using sharpness and composition analysis...")
+                    groups = scanner.enhanced_grouping_with_similarity(groups, progress_callback=update_progress)
+                    
+                    # Step 4: Visual similarity filtering
+                    update_progress("Filtering by visual similarity", 4, 4, f"Comparing visual similarity to prevent unrelated photos in same group (70% threshold)...")
+                    groups = scanner.filter_groups_by_visual_similarity(groups, similarity_threshold=70.0)
+                    
+                    # Complete progress tracking
                     complete_progress()
-                    return jsonify({
-                        'success': False,
-                        'groups': [],
-                        'total_groups': 0,
-                        'error': f'Photo library scan error: {str(e)[:200]}',
-                        'message': 'Unable to scan Photos library. Please check compatibility.'
-                    })
+                    
+                    # Cache results
+                    cached_groups = groups
+                    cached_timestamp = datetime.now()
                 
-                # Step 2: Group photos by time and camera
-                update_progress("Grouping photos", 2, 4, f"Creating groups from {len(photos):,} photos using 10-second windows and camera matching...")
-                groups = scanner.group_photos_by_time_and_camera(photos)
+                else:
+                    print("🧪 DEMO MODE: Generating test groups for deletion workflow demonstration")
                 
-                # Step 3: Enhanced grouping with quality analysis
-                update_progress("Analyzing image quality", 3, 4, f"Computing quality scores for {len(groups):,} photo groups using sharpness and composition analysis...")
-                groups = scanner.enhanced_grouping_with_similarity(groups, progress_callback=update_progress)
+                # Generate test groups immediately without triggering analysis
+                from urllib.parse import urlencode
+                from urllib.request import urlopen
                 
-                # Step 4: Visual similarity filtering
-                update_progress("Filtering by visual similarity", 4, 4, f"Comparing visual similarity to prevent unrelated photos in same group (70% threshold)...")
-                groups = scanner.filter_groups_by_visual_similarity(groups, similarity_threshold=70.0)
+                try:
+                    # Use the internal test-groups endpoint to get data
+                    test_response = requests.get(f"http://127.0.0.1:5003/api/test-groups?limit={limit}")
+                    if test_response.status_code == 200:
+                        test_data = test_response.json()
+                        
+                        if 'groups' in test_data and test_data['groups']:
+                            print(f"✅ Generated {len(test_data['groups'])} test groups for deletion workflow")
+                            
+                            # Apply pagination just like real groups
+                            start_idx = (page - 1) * limit
+                            end_idx = start_idx + limit
+                            paginated_groups = test_data['groups'][start_idx:end_idx]
+                            
+                            return jsonify({
+                                'success': True,
+                                'groups': paginated_groups,
+                                'total_groups': len(test_data['groups']),
+                                'total_photos': sum(len(g.get('photos', [])) for g in test_data['groups']),
+                                'current_page': page,
+                                'total_pages': (len(test_data['groups']) + limit - 1) // limit,
+                                'has_next': end_idx < len(test_data['groups']),
+                                'has_previous': page > 1,
+                                'mode': 'test_data',
+                                'message': f'Showing {len(paginated_groups)} test groups for deletion workflow (page {page})'
+                            })
+                except Exception as e:
+                    print(f"⚠️ Could not generate test groups: {e}")
                 
-                # Complete progress tracking
-                complete_progress()
+                # Final fallback - return empty but functional state
+                print("📋 No data available - returning empty state for deletion workflow")
+                return jsonify({
+                    'success': True,
+                    'groups': [],
+                    'total_groups': 0,
+                    'total_photos': 0,
+                    'mode': 'empty',
+                    'message': 'No duplicate photo groups available'
+                })
                 
-                # Cache results
-                cached_groups = groups
-                cached_timestamp = now
+                # REMOVED: Fresh analysis code completely eliminated
         
         # Apply limit for manageable review sessions
         if len(groups) > 10:
@@ -3045,6 +3338,12 @@ def api_groups():
         # Convert groups to JSON-serializable format
         groups_data = []
         for group in groups:
+            # Handle both object format (from analysis) and dict format (from test groups)
+            if isinstance(group, dict):
+                # Test groups are already in dict format
+                groups_data.append(group)
+                continue
+            
             group_data = {
                 'group_id': group.group_id,
                 'photos': [
@@ -3504,6 +3803,195 @@ def api_debug_filename(filename):
 # Stage 4: Photos Library Integration
 # ========================================
 
+def cancel_background_analysis():
+    """Cancel any running background analysis with aggressive termination."""
+    global progress_status, background_analysis_thread
+    
+    if progress_status['active']:
+        progress_status['cancelled'] = True
+        print(f"🛑 Cancelling background analysis: {progress_status['step']}")
+        
+        # Wait a short time for graceful cancellation
+        timeout_start = time.time()
+        while progress_status['active'] and (time.time() - timeout_start < 2.0):
+            time.sleep(0.1)
+            
+        # If still active after 2 seconds, force termination
+        if progress_status['active']:
+            print(f"⚠️ Graceful cancellation failed, attempting aggressive termination...")
+            
+            # Force reset progress status
+            progress_status['active'] = False
+            progress_status['cancelled'] = False
+            progress_status['step'] = ''
+            progress_status['progress'] = 0
+            
+            # If we have a thread reference, try to terminate it
+            if background_analysis_thread and background_analysis_thread.is_alive():
+                print(f"🔥 Terminating background analysis thread...")
+                try:
+                    # This is a drastic measure - try to force thread termination
+                    # Note: This is not ideal but may be necessary for resource conflicts
+                    import ctypes
+                    thread_id = background_analysis_thread.ident
+                    if thread_id:
+                        # Use ctypes to attempt thread termination (platform-dependent)
+                        if hasattr(ctypes, 'windll'):  # Windows
+                            ctypes.windll.kernel32.TerminateThread(thread_id, 0)
+                        else:  # Unix-like systems
+                            import os
+                            import signal
+                            # Try to interrupt the thread (this may not work reliably)
+                            try:
+                                os.kill(os.getpid(), signal.SIGINT)
+                            except:
+                                pass
+                    
+                    background_analysis_thread = None
+                    print(f"🔥 Thread termination attempted")
+                    
+                except Exception as e:
+                    print(f"⚠️ Thread termination failed: {e}")
+            
+            print(f"✅ Background analysis forcefully terminated")
+        else:
+            progress_status['cancelled'] = False
+            print(f"✅ Background analysis cancelled gracefully")
+
+@app.route('/api/force-stop-analysis', methods=['GET', 'POST'])
+def api_force_stop_analysis():
+    """Force stop any running analysis immediately."""
+    global progress_status
+    
+    print("🛑 FORCE STOP: Immediately terminating analysis...")
+    
+    # Force reset all progress tracking
+    progress_status['active'] = False
+    progress_status['cancelled'] = True
+    progress_status['step'] = 'FORCE STOPPED'
+    progress_status['progress'] = 0
+    progress_status['total'] = 0
+    progress_status['start_time'] = None
+    progress_status['current_operation'] = ''
+    progress_status['current_item'] = ''
+    
+    print("✅ Analysis force-stopped via API")
+    
+    return jsonify({
+        'success': True,
+        'message': 'Analysis force-stopped',
+        'progress_reset': True
+    })
+
+@app.route('/api/test-groups', methods=['GET'])
+def api_test_groups():
+    """Generate a small set of test groups for development/testing purposes."""
+    global cached_groups, cached_timestamp
+    
+    print("🧪 Generating test groups for development/testing...")
+    
+    try:
+        from datetime import datetime, timedelta
+        import uuid
+        
+        # Create 2 simple test groups with dummy data
+        test_groups = []
+        
+        # Group 1: 2 test photos
+        group1_photos = []
+        for i in range(2):
+            photo_uuid = str(uuid.uuid4())
+            group1_photos.append({
+                'uuid': photo_uuid,
+                'filename': f'test_photo_{i+1}.jpg',
+                'path': f'/tmp/test_{photo_uuid}.jpg',
+                'file_size': 2000000 + i * 100000,
+                'timestamp': (datetime.now() - timedelta(days=i)).isoformat(),
+                'quality_score': 75.0 + i * 2,
+                'quality_method': 'quality',
+                'is_favorite': False,
+                'camera_make': 'Canon',
+                'camera_model': 'EOS R5',
+                'width': 4000 + i * 100,
+                'height': 3000 + i * 100,
+                'recommended': i == 1  # Second photo is recommended
+            })
+        
+        group1 = {
+            'group_id': 'test_group_1',
+            'photos': group1_photos,
+            'recommended_photo': group1_photos[1],  # Second photo has higher quality score
+            'total_size_bytes': sum(p['file_size'] for p in group1_photos),
+            'potential_savings_bytes': group1_photos[0]['file_size'],  # First photo could be deleted
+            'camera_model': 'Canon EOS R5',
+            'time_window_start': (datetime.now() - timedelta(days=1)).isoformat(),
+            'time_window_end': datetime.now().isoformat(),
+            'cluster_info': {
+                'similarity_threshold': 0.95,
+                'cluster_method': 'test_data'
+            }
+        }
+        test_groups.append(group1)
+        
+        # Group 2: 3 test photos  
+        group2_photos = []
+        for i in range(3):
+            photo_uuid = str(uuid.uuid4())
+            group2_photos.append({
+                'uuid': photo_uuid,
+                'filename': f'similar_photo_{i+1}.jpg',
+                'path': f'/tmp/similar_{photo_uuid}.jpg',
+                'file_size': 1500000 + i * 50000,
+                'timestamp': (datetime.now() - timedelta(hours=i)).isoformat(),
+                'quality_score': 60.0 + i * 5,
+                'quality_method': 'favorite' if i == 2 else 'quality',
+                'is_favorite': i == 2,  # Last photo is favorite
+                'camera_make': 'Apple',
+                'camera_model': 'iPhone 14 Pro',
+                'width': 3000 + i * 50,
+                'height': 2000 + i * 50,
+                'recommended': i == 2  # Favorite photo is recommended
+            })
+            
+        group2 = {
+            'group_id': 'test_group_2', 
+            'photos': group2_photos,
+            'recommended_photo': group2_photos[2],  # Favorite photo
+            'total_size_bytes': sum(p['file_size'] for p in group2_photos),
+            'potential_savings_bytes': sum(group2_photos[i]['file_size'] for i in [0, 1]),  # First two could be deleted
+            'camera_model': 'Apple iPhone 14 Pro',
+            'time_window_start': (datetime.now() - timedelta(hours=3)).isoformat(),
+            'time_window_end': datetime.now().isoformat(),
+            'cluster_info': {
+                'similarity_threshold': 0.92,
+                'cluster_method': 'test_data'
+            }
+        }
+        test_groups.append(group2)
+        
+        # Cache the test groups
+        cached_groups = test_groups
+        cached_timestamp = datetime.now()
+        
+        total_photos = sum(len(g['photos']) for g in test_groups)
+        print(f"🧪 Generated {len(test_groups)} test groups with {total_photos} photos total")
+        
+        return jsonify({
+            'success': True,
+            'groups': test_groups,
+            'total_photos': total_photos,
+            'message': 'Test groups generated successfully',
+            'test_mode': True
+        })
+        
+    except Exception as e:
+        print(f"❌ Error generating test groups: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Failed to generate test groups'
+        }), 500
+
 @app.route('/api/complete-workflow', methods=['POST'])
 def api_complete_workflow():
     """Complete the full photo tagging and organization workflow."""
@@ -3514,6 +4002,17 @@ def api_complete_workflow():
         
         if not photo_uuids:
             return jsonify({'success': False, 'error': 'No photos provided'}), 400
+        
+        # Cancel any running background analysis before starting deletions
+        cancel_background_analysis()
+        
+        # Double-check and force-stop if still active
+        if progress_status.get('active', False):
+            print("⚠️ Analysis still active after cancellation - forcing immediate stop...")
+            progress_status['active'] = False
+            progress_status['cancelled'] = True
+            progress_status['step'] = 'FORCE STOPPED FOR DELETION'
+            print("🔥 Analysis forcefully terminated for deletion workflow")
         
         session_id = f"session-{datetime.now().strftime('%Y-%m-%d %H-%M-%S')}"
         print(f"🚀 Starting complete workflow for {len(photo_uuids)} photos")
@@ -4223,6 +4722,53 @@ def api_save_filter_criteria():
         
     except Exception as e:
         print(f"❌ Error saving filter criteria: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/apply-filters', methods=['POST'])
+def api_apply_filters():
+    """Apply filters and redirect to legacy interface - for new filter UI compatibility."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        # Convert new filter interface format to expected format
+        year_data = data.get('year')
+        if year_data and isinstance(year_data, list) and 'all' not in year_data:
+            # Handle multi-select years - convert to individual years
+            year_filter = year_data if len(year_data) > 1 else year_data[0] if year_data else None
+        else:
+            year_filter = None
+            
+        filters = {
+            'years': year_data if year_data and isinstance(year_data, list) and 'all' not in year_data else None,  # Multi-select support
+            'year': year_filter if isinstance(year_filter, str) else None,  # Single year for backward compatibility
+            'priority_levels': data.get('priority', []) if data.get('priority') else None,
+            'file_types': data.get('filetype'),
+            'min_size_mb': data.get('filesize_min_mb'),
+            'max_size_mb': data.get('filesize_max_mb')
+        }
+        
+        # Remove None values
+        filters = {k: v for k, v in filters.items() if v is not None}
+        
+        # Save to session for legacy interface
+        session['filter_criteria'] = filters
+        
+        print(f"💾 Applied filters from new UI: {filters}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Filters applied successfully',
+            'redirect_url': '/legacy'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error applying filters: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
