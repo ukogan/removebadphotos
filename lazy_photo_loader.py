@@ -284,7 +284,7 @@ class LazyPhotoLoader:
         # First group by time and camera, then enhance with similarity
         initial_groups = self.scanner.group_photos_by_time_and_camera(load_result.photos, time_window_seconds=10)
         enhanced_groups = self.scanner.enhanced_grouping_with_similarity(initial_groups, progress_callback=progress_callback)
-        final_groups = self.scanner.filter_groups_by_visual_similarity(enhanced_groups, similarity_threshold=70.0)
+        final_groups = self.scanner.filter_groups_by_visual_similarity(enhanced_groups, similarity_threshold=50.0)
         
         groups = final_groups
         
