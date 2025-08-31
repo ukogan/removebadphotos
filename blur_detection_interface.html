@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemoveBadPhotos - Quality Analysis Interface</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+        .mockup-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .mockup-header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .mockup-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .mockup-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .variation-selector {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 20px 40px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .variation-btn {
+            padding: 12px 24px;
+            background: #3182ce;
+            color: white;
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .main-content { padding: 40px; }
+        .active-filters-summary {
+            background: linear-gradient(90deg, #edf2f7, #f7fafc);
+            border: 2px solid #cbd5e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .filter-summary-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .selection-count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        .selection-count .number {
+            color: #3182ce;
+            font-size: 2rem;
+        }
+        .active-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-tag {
+            background: #3182ce;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-tag .close-btn {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clear-all-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .filter-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .filter-category {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 30px;
+        }
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+        .category-icon.year { background: #bfdbfe; color: #1d4ed8; }
+        .category-icon.priority { background: #fecaca; color: #dc2626; }
+        .category-icon.filetype { background: #d1fae5; color: #059669; }
+        .category-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a202c;
+        }
+        .filter-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .filter-option {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+        }
+        .filter-option.selected {
+            background: #3182ce;
+            border-color: #2563eb;
+            color: white;
+        }
+        .option-label {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+        .option-count {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+        .results-preview {
+            background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
+            border: 2px solid #86efac;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .preview-stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .preview-stat { text-align: center; }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #059669;
+            display: block;
+        }
+        .stat-label {
+            color: #065f46;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: #3182ce; color: white; }
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        /* Advanced File Size Options */
+        .advanced-options {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .advanced-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .advanced-header:hover {
+            background: #f1f5f9;
+        }
+
+        .advanced-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+
+        .category-icon.filesize {
+            background: #fde68a;
+            color: #d97706;
+        }
+
+        .expand-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+            color: #4a5568;
+        }
+
+        .advanced-options.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .advanced-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .advanced-options.expanded .advanced-content {
+            max-height: 400px;
+        }
+
+        .advanced-inner {
+            padding: 30px;
+        }
+
+        .size-range-container {
+            margin: 20px 0;
+        }
+
+        .size-range-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .size-range-values {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #2d3748;
+        }
+
+        .dual-range-wrapper {
+            position: relative;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 20px;
+            margin: 20px 0;
+        }
+
+        .dual-range-track {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            right: 10px;
+            height: 6px;
+            background: #cbd5e0;
+            border-radius: 3px;
+            transform: translateY(-50%);
+        }
+
+        .dual-range-fill {
+            position: absolute;
+            height: 6px;
+            background: linear-gradient(90deg, #3182ce, #2563eb);
+            border-radius: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+            left: 25%;
+            width: 50%;
+        }
+
+        .range-thumb {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border: 3px solid #3182ce;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .range-thumb.min { left: 25%; }
+        .range-thumb.max { left: 75%; }
+
+        .quintile-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .quintile-btn {
+            padding: 8px 16px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex: 1;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .quintile-btn:hover {
+            border-color: #3182ce;
+            background: #eff6ff;
+        }
+
+        .quintile-btn.active {
+            background: #3182ce;
+            color: white;
+            border-color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-header">
+            <h1>RemoveBadPhotos</h1>
+        </div>
+
+        <div class="main-content">
+            
+            <div class="active-filters-summary">
+                <div class="filter-summary-left">
+                    <div class="selection-count">
+                        Filters applied:
+                    </div>
+                    <div class="active-tags" id="active-tags">
+                        <!-- Active filter tags will be populated by JavaScript -->
+                    </div>
+                </div>
+                <button class="clear-all-btn" onclick="clearAllFilters()">Clear All Filters</button>
+            </div>
+
+            <div class="filter-categories">
+                <!-- Year Filter -->
+                <div class="filter-category">
+                    <div class="category-header">
+                        <div class="category-icon year">📅</div>
+                        <div class="category-title">Year</div>
+                    </div>
+                    <div class="filter-options" id="year-options">
+                        <!-- Year options will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="filter-category">
+                    <div class="category-header">
+                        <div class="category-icon priority">🎯</div>
+                        <div class="category-title">Photo Quality Issues</div>
+                    </div>
+                    <div class="filter-options" id="priority-options">
+                        <!-- Priority options will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- File Types Filter -->
+                <div class="filter-category">
+                    <div class="category-header">
+                        <div class="category-icon filetype">📱</div>
+                        <div class="category-title">File Types</div>
+                    </div>
+                    <div class="filter-options" id="filetype-options">
+                        <!-- File type options will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced File Size Options -->
+            <div class="advanced-options" id="advancedOptions">
+                <div class="advanced-header" onclick="toggleAdvanced()">
+                    <h3>
+                        <div class="category-icon filesize">📏</div>
+                        Advanced File Size Filters
+                    </h3>
+                    <div class="expand-icon">▼</div>
+                </div>
+                <div class="advanced-content">
+                    <div class="advanced-inner">
+                        <div class="size-range-container">
+                            <div class="size-range-labels">
+                                <span>0 MB</span>
+                                <span>100+ MB</span>
+                            </div>
+                            <div class="size-range-values">
+                                5.2 MB - 47.8 MB
+                            </div>
+                            <div class="dual-range-wrapper">
+                                <div class="dual-range-track"></div>
+                                <div class="dual-range-fill"></div>
+                                <div class="range-thumb min"></div>
+                                <div class="range-thumb max"></div>
+                            </div>
+                            
+                            <div class="quintile-options">
+                                <button class="quintile-btn">Smallest 20%</button>
+                                <button class="quintile-btn">Small</button>
+                                <button class="quintile-btn active">Medium</button>
+                                <button class="quintile-btn">Large</button>
+                                <button class="quintile-btn">Largest 20%</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-preview">
+                <div class="preview-stats">
+                    <div class="preview-stat">
+                        <span class="stat-number" id="preview-photos">-</span>
+                        <span class="stat-label">Quality issues found</span>
+                    </div>
+                    <div class="preview-stat">
+                        <span class="stat-number" id="preview-savings">-</span>
+                        <span class="stat-label">Potential savings</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="applyFilters()" id="find-duplicates-btn">
+                        🔍 Analyze Photo Quality
+                    </button>
+                    <button class="btn btn-secondary" onclick="saveFilters()">
+                        💾 Save filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let photosData = null;
+        let selectedYear = 'all';
+        let selectedPriorities = new Set(['very-blurry', 'blurry']);
+        let selectedFileTypes = new Set(['heic']);
+        let selectedSizeRange = null;
+
+        async function loadPhotosData() {
+            try {
+                const response = await fetch('/api/blur-library-stats');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                photosData = await response.json();
+                populateFilters();
+                updatePreview();
+            } catch (error) {
+                console.error('Failed to load photos data:', error);
+                loadDemoData();
+            }
+        }
+
+        function loadDemoData() {
+            // Demo data for blur detection interface
+            photosData = {
+                summary: { total: 12987, quality_issues_found: 1547, potential_savings: '0.8GB' },
+                by_year: { 2024: 3520, 2023: 2298, 2022: 1845, 2021: 1234, older: 4090 },
+                by_priority: { 'very-blurry': 142, 'blurry': 485, 'slightly-blurry': 673, 'sharp': 11687 },
+                by_extension: { heic: 12041, jpg: 780, png: 141 }
+            };
+            populateFilters();
+            updatePreview();
+        }
+
+        function populateFilters() {
+            if (!photosData) return;
+
+            // Populate year options
+            const yearOptions = document.getElementById('year-options');
+            yearOptions.innerHTML = `
+                <div class="filter-option ${selectedYear === 'all' ? 'selected' : ''}" onclick="selectYear('all')">
+                    <div class="option-label">All</div>
+                    <div class="option-count">${photosData.summary.total.toLocaleString()} photos</div>
+                </div>
+                ${Object.entries(photosData.by_year).map(([year, count]) => `
+                    <div class="filter-option ${selectedYear === year ? 'selected' : ''}" onclick="selectYear('${year}')">
+                        <div class="option-label">${year === 'older' ? 'Older' : year}</div>
+                        <div class="option-count">${count.toLocaleString()} photos</div>
+                    </div>
+                `).join('')}
+            `;
+
+            // Populate quality options (formerly priority)
+            const qualityLabels = {
+                'very-blurry': 'Very Blurry',
+                'blurry': 'Blurry', 
+                'slightly-blurry': 'Slightly Blurry',
+                'sharp': 'Sharp'
+            };
+            const priorityOptions = document.getElementById('priority-options');
+            priorityOptions.innerHTML = Object.entries(photosData.by_priority).map(([priority, count]) => `
+                <div class="filter-option ${selectedPriorities.has(priority) ? 'selected' : ''}" onclick="togglePriority('${priority}')">
+                    <div class="option-label">${qualityLabels[priority] || priority}</div>
+                    <div class="option-count">${count.toLocaleString()} photos</div>
+                </div>
+            `).join('');
+
+            // Populate file type options
+            const filetypeOptions = document.getElementById('filetype-options');
+            filetypeOptions.innerHTML = `
+                <div class="filter-option ${selectedFileTypes.has('heic') ? 'selected' : ''}" onclick="toggleFileType('heic')">
+                    <div class="option-label">HEIC</div>
+                    <div class="option-count">${photosData.by_extension.heic.toLocaleString()} photos</div>
+                </div>
+                <div class="filter-option" onclick="toggleFileType('jpg')">
+                    <div class="option-label">JPG</div>
+                    <div class="option-count">${photosData.by_extension.jpg.toLocaleString()} photos</div>
+                </div>
+                <div class="filter-option" onclick="toggleFileType('png')">
+                    <div class="option-label">PNG</div>
+                    <div class="option-count">${photosData.by_extension.png.toLocaleString()} photos</div>
+                </div>
+                <div class="filter-option" onclick="selectAllFileTypes()">
+                    <div class="option-label">All Types</div>
+                    <div class="option-count">${photosData.summary.total.toLocaleString()} photos</div>
+                </div>
+            `;
+        }
+
+        function selectYear(year) {
+            selectedYear = year;
+            populateFilters();
+            updateActiveFilters();
+            updatePreview();
+        }
+
+        function togglePriority(priority) {
+            if (selectedPriorities.has(priority)) {
+                selectedPriorities.delete(priority);
+            } else {
+                selectedPriorities.add(priority);
+            }
+            populateFilters();
+            updateActiveFilters();
+            updatePreview();
+        }
+
+        function toggleFileType(type) {
+            if (selectedFileTypes.has(type)) {
+                selectedFileTypes.delete(type);
+            } else {
+                selectedFileTypes.add(type);
+            }
+            populateFilters();
+            updateActiveFilters();
+            updatePreview();
+        }
+
+        function selectAllFileTypes() {
+            selectedFileTypes.clear();
+            populateFilters();
+            updateActiveFilters();
+            updatePreview();
+        }
+
+        function toggleAdvanced() {
+            const advancedOptions = document.getElementById('advancedOptions');
+            advancedOptions.classList.toggle('expanded');
+        }
+
+        function updateActiveFilters() {
+            const activeTagsContainer = document.getElementById('active-tags');
+            const tags = [];
+
+            if (selectedYear !== 'all') {
+                const yearLabel = selectedYear === 'older' ? 'Older' : selectedYear;
+                tags.push(`<div class="filter-tag">📅 ${yearLabel} <button class="close-btn" onclick="selectYear('all')">×</button></div>`);
+            }
+
+            if (selectedPriorities.size > 0 && selectedPriorities.size < 4) {
+                const priorities = Array.from(selectedPriorities).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-');
+                tags.push(`<div class="filter-tag">🎯 ${priorities} <button class="close-btn" onclick="clearPriorities()">×</button></div>`);
+            }
+
+            if (selectedFileTypes.size > 0) {
+                const types = Array.from(selectedFileTypes).map(t => t.toUpperCase()).join(', ');
+                tags.push(`<div class="filter-tag">📱 ${types} <button class="close-btn" onclick="selectAllFileTypes()">×</button></div>`);
+            }
+
+            if (selectedSizeRange) {
+                tags.push(`<div class="filter-tag">📏 ${selectedSizeRange} <button class="close-btn" onclick="clearSizeRange()">×</button></div>`);
+            }
+
+            activeTagsContainer.innerHTML = tags.join('');
+        }
+
+        function updatePreview() {
+            // Simulate filtered results based on demo data
+            const photosElement = document.getElementById('preview-photos');
+            const savingsElement = document.getElementById('preview-savings');
+
+            if (photosData) {
+                photosElement.textContent = photosData.summary.quality_issues_found.toLocaleString();
+                savingsElement.textContent = photosData.summary.potential_savings;
+            }
+        }
+
+        function clearAllFilters() {
+            selectedYear = 'all';
+            selectedPriorities.clear();
+            selectedFileTypes.clear();
+            selectedSizeRange = null;
+            populateFilters();
+            updateActiveFilters();
+            updatePreview();
+        }
+
+        function clearPriorities() {
+            selectedPriorities.clear();
+            populateFilters();
+            updateActiveFilters();
+            updatePreview();
+        }
+
+        function clearSizeRange() {
+            selectedSizeRange = null;
+            document.querySelectorAll('.quintile-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.size-range-values').textContent = 'All sizes included';
+            updateActiveFilters();
+        }
+
+        async function applyFilters() {
+            try {
+                const filterData = {
+                    year: selectedYear,
+                    priorities: Array.from(selectedPriorities),
+                    file_types: Array.from(selectedFileTypes),
+                    size_range: selectedSizeRange
+                };
+
+                const response = await fetch('/api/apply-filters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(filterData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.redirect_url) {
+                        window.location.href = result.redirect_url;
+                    }
+                } else {
+                    throw new Error('Filter application failed');
+                }
+            } catch (error) {
+                console.error('Failed to apply filters:', error);
+                alert('Failed to apply filters. Please try again.');
+            }
+        }
+
+        function saveFilters() {
+            alert('Filter set saving will be implemented in a future update.');
+        }
+
+        // Quintile button functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.quintile-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active from siblings
+                    this.parentNode.querySelectorAll('.quintile-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    
+                    // Make this one active
+                    this.classList.add('active');
+                    
+                    // Update size range display
+                    const container = this.closest('.size-range-container');
+                    const values = container.querySelector('.size-range-values');
+                    
+                    // Demo values for different quintiles
+                    const ranges = {
+                        'Smallest 20%': '0.1 MB - 2.1 MB',
+                        'Small': '2.1 MB - 8.4 MB', 
+                        'Medium': '8.4 MB - 15.7 MB',
+                        'Large': '15.7 MB - 35.2 MB',
+                        'Largest 20%': '35.2 MB - 98.5 MB'
+                    };
+                    
+                    const label = this.textContent.trim();
+                    if (ranges[label]) {
+                        values.textContent = ranges[label];
+                        selectedSizeRange = ranges[label];
+                        updateActiveFilters();
+                    }
+                });
+            });
+
+            // Initialize the interface
+            loadPhotosData();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "🖼️ Photo Deduplication Tool" [level=1] [ref=e3]
+    - paragraph [ref=e4]: "Stage 3: Visual Interface"
+    - paragraph [ref=e5]:
+      - strong [ref=e6]: "Status:"
+      - text: Interactive photo selection with thumbnails - click photos to select/deselect for keeping
+  - generic [ref=e7]: ✅ Photos library connected
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: Analysis not run yet
+      - generic [ref=e11]: Potential Savings
+    - generic [ref=e12]:
+      - generic [ref=e13]: "0"
+      - generic [ref=e14]: Photos Scanned
+    - generic [ref=e15]:
+      - generic [ref=e16]: 2020-2025
+      - generic [ref=e17]: Date Range
+  - generic [ref=e18]:
+    - button "✅ Complete" [disabled] [ref=e19]
+    - button "📸 Analyze My Photos" [ref=e20] [cursor=pointer]
+    - generic "Analysis complete" [ref=e21]: ✅ Found 10 groups
+  - generic [ref=e24]:
+    - generic [ref=e25]: 📋
+    - generic [ref=e26]: Select photos to see deletion summary
+  - generic [ref=e27]:
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - generic [ref=e30]: 📁 group_0001
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - text: 📅
+            - strong [ref=e33]: "Time:"
+            - text: 2/16/2021, 1:39:19 PM - 2/16/2021, 1:39:26 PM
+          - generic [ref=e34]:
+            - text: 📷
+            - strong [ref=e35]: "Camera:"
+            - text: iPhone 11 Pro
+          - generic [ref=e36]:
+            - text: 📸
+            - strong [ref=e37]: "Photos:"
+            - text: "2"
+          - generic [ref=e38]:
+            - text: 💾
+            - strong [ref=e39]: "Total Size:"
+            - text: 10.76 MB
+          - generic [ref=e40]:
+            - text: 💰
+            - strong [ref=e41]: "Est. Savings:"
+            - text: ~5.31 MB
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - button "🛡️ Keep All Photos" [ref=e44] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e45] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e46] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e48] [cursor=pointer]
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - img "IMG_2453.HEIC" [ref=e52] [cursor=pointer]
+          - generic [ref=e53] [cursor=pointer]: IMG_2453.HEIC
+          - generic [ref=e54]:
+            - generic [ref=e55]: 📅 2/16/2021, 1:39:19 PM
+            - generic [ref=e56]: 💾 5.3 MB
+            - generic [ref=e57]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e58] [cursor=pointer]
+        - generic [ref=e59]:
+          - img "IMG_2454.HEIC" [ref=e61] [cursor=pointer]
+          - generic [ref=e62] [cursor=pointer]: IMG_2454.HEIC
+          - generic [ref=e63]:
+            - generic [ref=e64]: 📅 2/16/2021, 1:39:26 PM
+            - generic [ref=e65]: 💾 5.4 MB
+            - generic [ref=e66]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e67] [cursor=pointer]
+    - generic [ref=e68]:
+      - generic [ref=e69]:
+        - generic [ref=e70]: 📁 group_0002
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - text: 📅
+            - strong [ref=e73]: "Time:"
+            - text: 3/27/2022, 7:43:39 AM - 3/27/2022, 7:43:45 AM
+          - generic [ref=e74]:
+            - text: 📷
+            - strong [ref=e75]: "Camera:"
+            - text: DMC-ZS100
+          - generic [ref=e76]:
+            - text: 📸
+            - strong [ref=e77]: "Photos:"
+            - text: "2"
+          - generic [ref=e78]:
+            - text: 💾
+            - strong [ref=e79]: "Total Size:"
+            - text: 15.82 MB
+          - generic [ref=e80]:
+            - text: 💰
+            - strong [ref=e81]: "Est. Savings:"
+            - text: ~7.28 MB
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - button "🛡️ Keep All Photos" [ref=e84] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e85] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e86] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e88] [cursor=pointer]
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - img "IMG_0551.JPG" [ref=e92] [cursor=pointer]
+          - generic [ref=e93] [cursor=pointer]: IMG_0551.JPG
+          - generic [ref=e94]:
+            - generic [ref=e95]: 📅 3/27/2022, 7:43:39 AM
+            - generic [ref=e96]: 💾 7.3 MB
+            - generic [ref=e97]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e98] [cursor=pointer]
+        - generic [ref=e99]:
+          - img "IMG_0553.JPG" [ref=e101] [cursor=pointer]
+          - generic [ref=e102] [cursor=pointer]: IMG_0553.JPG
+          - generic [ref=e103]:
+            - generic [ref=e104]: 📅 3/27/2022, 7:43:45 AM
+            - generic [ref=e105]: 💾 8.5 MB
+            - generic [ref=e106]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e107] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - generic [ref=e110]: 📁 group_0003
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - text: 📅
+            - strong [ref=e113]: "Time:"
+            - text: 4/29/2022, 3:47:08 PM - 4/29/2022, 3:47:11 PM
+          - generic [ref=e114]:
+            - text: 📷
+            - strong [ref=e115]: "Camera:"
+            - text: iPhone 13 Pro
+          - generic [ref=e116]:
+            - text: 📸
+            - strong [ref=e117]: "Photos:"
+            - text: "2"
+          - generic [ref=e118]:
+            - text: 💾
+            - strong [ref=e119]: "Total Size:"
+            - text: 10.84 MB
+          - generic [ref=e120]:
+            - text: 💰
+            - strong [ref=e121]: "Est. Savings:"
+            - text: ~5.2 MB
+      - generic [ref=e122]:
+        - generic [ref=e123]:
+          - button "🛡️ Keep All Photos" [ref=e124] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e125] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e126] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e128] [cursor=pointer]
+      - generic [ref=e129]:
+        - generic [ref=e130]:
+          - img "IMG_6148.heic" [ref=e132] [cursor=pointer]
+          - generic [ref=e133] [cursor=pointer]: IMG_6148.heic
+          - generic [ref=e134]:
+            - generic [ref=e135]: 📅 4/29/2022, 3:47:08 PM
+            - generic [ref=e136]: 💾 5.2 MB
+            - generic [ref=e137]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e138] [cursor=pointer]
+        - generic [ref=e139]:
+          - img "IMG_6149.heic" [ref=e141] [cursor=pointer]
+          - generic [ref=e142] [cursor=pointer]: IMG_6149.heic
+          - generic [ref=e143]:
+            - generic [ref=e144]: 📅 4/29/2022, 3:47:11 PM
+            - generic [ref=e145]: 💾 5.6 MB
+            - generic [ref=e146]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e147] [cursor=pointer]
+    - generic [ref=e148]:
+      - generic [ref=e149]:
+        - generic [ref=e150]: 📁 group_0004
+        - generic [ref=e151]:
+          - generic [ref=e152]:
+            - text: 📅
+            - strong [ref=e153]: "Time:"
+            - text: 6/19/2023, 1:25:18 AM - 6/19/2023, 1:25:26 AM
+          - generic [ref=e154]:
+            - text: 📷
+            - strong [ref=e155]: "Camera:"
+            - text: iPhone 11 Pro
+          - generic [ref=e156]:
+            - text: 📸
+            - strong [ref=e157]: "Photos:"
+            - text: "2"
+          - generic [ref=e158]:
+            - text: 💾
+            - strong [ref=e159]: "Total Size:"
+            - text: 24.28 MB
+          - generic [ref=e160]:
+            - text: 💰
+            - strong [ref=e161]: "Est. Savings:"
+            - text: ~9.78 MB
+      - generic [ref=e162]:
+        - generic [ref=e163]:
+          - button "🛡️ Keep All Photos" [ref=e164] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e165] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e166] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e168] [cursor=pointer]
+      - generic [ref=e169]:
+        - generic [ref=e170]:
+          - img "IMG_0423.HEIC" [ref=e172] [cursor=pointer]
+          - generic [ref=e173] [cursor=pointer]: IMG_0423.HEIC
+          - generic [ref=e174]:
+            - generic [ref=e175]: 📅 6/19/2023, 1:25:18 AM
+            - generic [ref=e176]: 💾 9.8 MB
+            - generic [ref=e177]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e178] [cursor=pointer]
+        - generic [ref=e179]:
+          - img "IMG_0424.HEIC" [ref=e181] [cursor=pointer]
+          - generic [ref=e182] [cursor=pointer]: IMG_0424.HEIC
+          - generic [ref=e183]:
+            - generic [ref=e184]: 📅 6/19/2023, 1:25:26 AM
+            - generic [ref=e185]: 💾 14.5 MB
+            - generic [ref=e186]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e187] [cursor=pointer]
+    - generic [ref=e188]:
+      - generic [ref=e189]:
+        - generic [ref=e190]: 📁 group_0005
+        - generic [ref=e191]:
+          - generic [ref=e192]:
+            - text: 📅
+            - strong [ref=e193]: "Time:"
+            - text: 11/25/2023, 1:32:57 PM - 11/25/2023, 1:33:06 PM
+          - generic [ref=e194]:
+            - text: 📷
+            - strong [ref=e195]: "Camera:"
+            - text: iPhone 15 Pro
+          - generic [ref=e196]:
+            - text: 📸
+            - strong [ref=e197]: "Photos:"
+            - text: "2"
+          - generic [ref=e198]:
+            - text: 💾
+            - strong [ref=e199]: "Total Size:"
+            - text: 12.6 MB
+          - generic [ref=e200]:
+            - text: 💰
+            - strong [ref=e201]: "Est. Savings:"
+            - text: ~6.13 MB
+      - generic [ref=e202]:
+        - generic [ref=e203]:
+          - button "🛡️ Keep All Photos" [ref=e204] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e205] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e206] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e208] [cursor=pointer]
+      - generic [ref=e209]:
+        - generic [ref=e210]:
+          - img "IMG_1155.HEIC" [ref=e212] [cursor=pointer]
+          - generic [ref=e213] [cursor=pointer]: IMG_1155.HEIC
+          - generic [ref=e214]:
+            - generic [ref=e215]: 📅 11/25/2023, 1:32:57 PM
+            - generic [ref=e216]: 💾 6.1 MB
+            - generic [ref=e217]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e218] [cursor=pointer]
+        - generic [ref=e219]:
+          - img "IMG_1156.HEIC" [ref=e221] [cursor=pointer]
+          - generic [ref=e222] [cursor=pointer]: IMG_1156.HEIC
+          - generic [ref=e223]:
+            - generic [ref=e224]: 📅 11/25/2023, 1:33:06 PM
+            - generic [ref=e225]: 💾 6.5 MB
+            - generic [ref=e226]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e227] [cursor=pointer]
+    - generic [ref=e228]:
+      - generic [ref=e229]:
+        - generic [ref=e230]: 📁 group_0006
+        - generic [ref=e231]:
+          - generic [ref=e232]:
+            - text: 📅
+            - strong [ref=e233]: "Time:"
+            - text: 6/29/2024, 10:43:44 AM - 6/29/2024, 10:43:47 AM
+          - generic [ref=e234]:
+            - text: 📷
+            - strong [ref=e235]: "Camera:"
+            - text: iPhone 15 Pro
+          - generic [ref=e236]:
+            - text: 📸
+            - strong [ref=e237]: "Photos:"
+            - text: "2"
+          - generic [ref=e238]:
+            - text: 💾
+            - strong [ref=e239]: "Total Size:"
+            - text: 10.94 MB
+          - generic [ref=e240]:
+            - text: 💰
+            - strong [ref=e241]: "Est. Savings:"
+            - text: ~5.41 MB
+      - generic [ref=e242]:
+        - generic [ref=e243]:
+          - button "🛡️ Keep All Photos" [ref=e244] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e245] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e246] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e248] [cursor=pointer]
+      - generic [ref=e249]:
+        - generic [ref=e250]:
+          - img "IMG_3040.HEIC" [ref=e252] [cursor=pointer]
+          - generic [ref=e253] [cursor=pointer]: IMG_3040.HEIC
+          - generic [ref=e254]:
+            - generic [ref=e255]: 📅 6/29/2024, 10:43:44 AM
+            - generic [ref=e256]: 💾 5.4 MB
+            - generic [ref=e257]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e258] [cursor=pointer]
+        - generic [ref=e259]:
+          - img "IMG_3041.HEIC" [ref=e261] [cursor=pointer]
+          - generic [ref=e262] [cursor=pointer]: IMG_3041.HEIC
+          - generic [ref=e263]:
+            - generic [ref=e264]: 📅 6/29/2024, 10:43:47 AM
+            - generic [ref=e265]: 💾 5.5 MB
+            - generic [ref=e266]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e267] [cursor=pointer]
+    - generic [ref=e268]:
+      - generic [ref=e269]:
+        - generic [ref=e270]: 📁 group_0007
+        - generic [ref=e271]:
+          - generic [ref=e272]:
+            - text: 📅
+            - strong [ref=e273]: "Time:"
+            - text: 8/30/2024, 8:38:50 PM - 8/30/2024, 8:38:54 PM
+          - generic [ref=e274]:
+            - text: 📷
+            - strong [ref=e275]: "Camera:"
+            - text: iPhone 15 Pro
+          - generic [ref=e276]:
+            - text: 📸
+            - strong [ref=e277]: "Photos:"
+            - text: "2"
+          - generic [ref=e278]:
+            - text: 💾
+            - strong [ref=e279]: "Total Size:"
+            - text: 13.84 MB
+          - generic [ref=e280]:
+            - text: 💰
+            - strong [ref=e281]: "Est. Savings:"
+            - text: ~6.83 MB
+      - generic [ref=e282]:
+        - generic [ref=e283]:
+          - button "🛡️ Keep All Photos" [ref=e284] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e285] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e286] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e288] [cursor=pointer]
+      - generic [ref=e289]:
+        - generic [ref=e290]:
+          - img "IMG_2156.HEIC" [ref=e292] [cursor=pointer]
+          - generic [ref=e293] [cursor=pointer]: IMG_2156.HEIC
+          - generic [ref=e294]:
+            - generic [ref=e295]: 📅 8/30/2024, 8:38:50 PM
+            - generic [ref=e296]: 💾 7.0 MB
+            - generic [ref=e297]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e298] [cursor=pointer]
+        - generic [ref=e299]:
+          - img "IMG_2158.HEIC" [ref=e301] [cursor=pointer]
+          - generic [ref=e302] [cursor=pointer]: IMG_2158.HEIC
+          - generic [ref=e303]:
+            - generic [ref=e304]: 📅 8/30/2024, 8:38:54 PM
+            - generic [ref=e305]: 💾 6.8 MB
+            - generic [ref=e306]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e307] [cursor=pointer]
+    - generic [ref=e308]:
+      - generic [ref=e309]:
+        - generic [ref=e310]: 📁 group_0008
+        - generic [ref=e311]:
+          - generic [ref=e312]:
+            - text: 📅
+            - strong [ref=e313]: "Time:"
+            - text: 10/30/2024, 2:24:01 PM - 10/30/2024, 2:24:08 PM
+          - generic [ref=e314]:
+            - text: 📷
+            - strong [ref=e315]: "Camera:"
+            - text: iPhone 15 Pro
+          - generic [ref=e316]:
+            - text: 📸
+            - strong [ref=e317]: "Photos:"
+            - text: "2"
+          - generic [ref=e318]:
+            - text: 💾
+            - strong [ref=e319]: "Total Size:"
+            - text: 11.4 MB
+          - generic [ref=e320]:
+            - text: 💰
+            - strong [ref=e321]: "Est. Savings:"
+            - text: ~5.62 MB
+      - generic [ref=e322]:
+        - generic [ref=e323]:
+          - button "🛡️ Keep All Photos" [ref=e324] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e325] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e326] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e328] [cursor=pointer]
+      - generic [ref=e329]:
+        - generic [ref=e330]:
+          - img "IMG_3916.HEIC" [ref=e332] [cursor=pointer]
+          - generic [ref=e333] [cursor=pointer]: IMG_3916.HEIC
+          - generic [ref=e334]:
+            - generic [ref=e335]: 📅 10/30/2024, 2:24:01 PM
+            - generic [ref=e336]: 💾 5.6 MB
+            - generic [ref=e337]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e338] [cursor=pointer]
+        - generic [ref=e339]:
+          - img "IMG_3917.HEIC" [ref=e341] [cursor=pointer]
+          - generic [ref=e342] [cursor=pointer]: IMG_3917.HEIC
+          - generic [ref=e343]:
+            - generic [ref=e344]: 📅 10/30/2024, 2:24:08 PM
+            - generic [ref=e345]: 💾 5.8 MB
+            - generic [ref=e346]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e347] [cursor=pointer]
+    - generic [ref=e348]:
+      - generic [ref=e349]:
+        - generic [ref=e350]: 📁 group_0009
+        - generic [ref=e351]:
+          - generic [ref=e352]:
+            - text: 📅
+            - strong [ref=e353]: "Time:"
+            - text: 11/2/2024, 3:49:01 PM - 11/2/2024, 3:49:04 PM
+          - generic [ref=e354]:
+            - text: 📷
+            - strong [ref=e355]: "Camera:"
+            - text: iPhone 15 Pro
+          - generic [ref=e356]:
+            - text: 📸
+            - strong [ref=e357]: "Photos:"
+            - text: "2"
+          - generic [ref=e358]:
+            - text: 💾
+            - strong [ref=e359]: "Total Size:"
+            - text: 10.92 MB
+          - generic [ref=e360]:
+            - text: 💰
+            - strong [ref=e361]: "Est. Savings:"
+            - text: ~5.38 MB
+      - generic [ref=e362]:
+        - generic [ref=e363]:
+          - button "🛡️ Keep All Photos" [ref=e364] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e365] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e366] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e368] [cursor=pointer]
+      - generic [ref=e369]:
+        - generic [ref=e370]:
+          - img "IMG_2754.HEIC" [ref=e372] [cursor=pointer]
+          - generic [ref=e373] [cursor=pointer]: IMG_2754.HEIC
+          - generic [ref=e374]:
+            - generic [ref=e375]: 📅 11/2/2024, 3:49:01 PM
+            - generic [ref=e376]: 💾 5.4 MB
+            - generic [ref=e377]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e378] [cursor=pointer]
+        - generic [ref=e379]:
+          - img "IMG_2755.HEIC" [ref=e381] [cursor=pointer]
+          - generic [ref=e382] [cursor=pointer]: IMG_2755.HEIC
+          - generic [ref=e383]:
+            - generic [ref=e384]: 📅 11/2/2024, 3:49:04 PM
+            - generic [ref=e385]: 💾 5.5 MB
+            - generic [ref=e386]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e387] [cursor=pointer]
+    - generic [ref=e388]:
+      - generic [ref=e389]:
+        - generic [ref=e390]: 📁 group_0010
+        - generic [ref=e391]:
+          - generic [ref=e392]:
+            - text: 📅
+            - strong [ref=e393]: "Time:"
+            - text: 11/7/2024, 4:38:30 PM - 11/7/2024, 4:38:33 PM
+          - generic [ref=e394]:
+            - text: 📷
+            - strong [ref=e395]: "Camera:"
+            - text: iPhone 15 Pro
+          - generic [ref=e396]:
+            - text: 📸
+            - strong [ref=e397]: "Photos:"
+            - text: "2"
+          - generic [ref=e398]:
+            - text: 💾
+            - strong [ref=e399]: "Total Size:"
+            - text: 10.75 MB
+          - generic [ref=e400]:
+            - text: 💰
+            - strong [ref=e401]: "Est. Savings:"
+            - text: ~5.21 MB
+      - generic [ref=e402]:
+        - generic [ref=e403]:
+          - button "🛡️ Keep All Photos" [ref=e404] [cursor=pointer]
+          - button "❌ Delete Duplicates" [ref=e405] [cursor=pointer]
+          - button "❌ Delete All Photos" [ref=e406] [cursor=pointer]
+        - button "ℹ️ Grouping Info" [ref=e408] [cursor=pointer]
+      - generic [ref=e409]:
+        - generic [ref=e410]:
+          - img "IMG_3954.HEIC" [ref=e412] [cursor=pointer]
+          - generic [ref=e413] [cursor=pointer]: IMG_3954.HEIC
+          - generic [ref=e414]:
+            - generic [ref=e415]: 📅 11/7/2024, 4:38:30 PM
+            - generic [ref=e416]: 💾 5.2 MB
+            - generic [ref=e417]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e418] [cursor=pointer]
+        - generic [ref=e419]:
+          - img "IMG_3955.HEIC" [ref=e421] [cursor=pointer]
+          - generic [ref=e422] [cursor=pointer]: IMG_3955.HEIC
+          - generic [ref=e423]:
+            - generic [ref=e424]: 📅 11/7/2024, 4:38:33 PM
+            - generic [ref=e425]: 💾 5.5 MB
+            - generic [ref=e426]: ⭐ 0.0
+          - button "Mark for Deletion" [ref=e427] [cursor=pointer]
+```

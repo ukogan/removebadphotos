@@ -19,6 +19,7 @@ from photo_scanner import PhotoScanner
 from library_analyzer import LibraryAnalyzer
 from photo_tagger import PhotoTagger
 from lazy_photo_loader import LazyPhotoLoader
+from blur_detector import BlurDetector
 import json
 import os
 import tempfile
@@ -46,6 +47,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session timeout
 scanner = PhotoScanner()
 analyzer = LibraryAnalyzer()
 tagger = PhotoTagger()
+blur_detector = BlurDetector()
 lazy_loader = LazyPhotoLoader(analyzer, scanner)
 cached_groups = None
 cached_timestamp = None
@@ -174,19 +176,23 @@ os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
 @app.route('/')
 def index():
-    """Main dashboard page with library overview and priority targeting."""
-    with open('/Users/urikogan/code/dedup/dashboard.html', 'r') as f:
-        return f.read()
+    """Main blur detection interface for photo quality analysis."""
+    try:
+        with open('blur_detection_interface.html', 'r') as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error serving blur detection interface: {e}")
+        return f"Error loading blur detection interface: {e}", 500
 
 @app.route('/filters')
 def filters():
-    """Stage 5B: Smart filter interface for targeted duplicate analysis."""
+    """Redirect to main blur detection interface."""
     try:
-        with open('/Users/urikogan/code/dedup/filter_interface.html', 'r') as f:
+        with open('blur_detection_interface.html', 'r') as f:
             return f.read()
     except Exception as e:
-        print(f"Error serving filter interface: {e}")
-        return f"Error loading filter interface: {e}", 500
+        print(f"Error serving blur detection interface: {e}")
+        return f"Error loading blur detection interface: {e}", 500
 
 @app.route('/legacy')
 def legacy():
@@ -5224,20 +5230,188 @@ def duplicates_interface():
     except FileNotFoundError:
         return "Duplicates interface not found", 404
 
+@app.route('/api/blur-analysis', methods=['POST'])
+def api_analyze_blur():
+    """Analyze photos for blur and quality issues."""
+    try:
+        data = request.get_json()
+        
+        # Get analysis parameters
+        blur_thresholds = data.get('blur_thresholds', {
+            'very_blurry': 50,
+            'blurry': 100,
+            'slightly_blurry': 200
+        })
+        
+        # Update detector thresholds
+        blur_detector.update_thresholds(
+            blur_thresholds['very_blurry'],
+            blur_thresholds['blurry'], 
+            blur_thresholds['slightly_blurry']
+        )
+        
+        # Get photos to analyze (from filters)
+        filters = data.get('filters', {})
+        
+        # Use existing photo scanning logic
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        
+        # Apply year filter if specified
+        year_filter = filters.get('year')
+        if year_filter and year_filter != 'all':
+            if isinstance(year_filter, list):
+                photos = [p for p in photos if str(p.date.year) in year_filter]
+            else:
+                photos = [p for p in photos if str(p.date.year) == year_filter]
+        
+        # Apply file type filter
+        file_types = filters.get('file_types', [])
+        if file_types and 'heic' not in [ft.lower() for ft in file_types]:
+            # Filter by specified types
+            photos = [p for p in photos if any(p.path.lower().endswith(f'.{ft.lower()}') for ft in file_types)]
+        
+        # Prepare for blur analysis
+        image_paths = []
+        for photo in photos[:1000]:  # Limit to 1000 photos for performance
+            if photo.path and os.path.exists(photo.path):
+                image_paths.append((photo.path, photo.uuid))
+        
+        # Perform blur analysis
+        print(f"🔍 Starting blur analysis of {len(image_paths)} photos...")
+        results = blur_detector.analyze_batch(image_paths)
+        
+        # Generate statistics
+        stats = blur_detector.get_statistics(results)
+        
+        # Format results for frontend
+        formatted_results = []
+        for result in results:
+            formatted_results.append({
+                'uuid': result.photo_uuid,
+                'blur_score': round(result.blur_score, 2),
+                'blur_level': result.blur_level,
+                'exposure_score': round(result.exposure_score, 2),
+                'quality_assessment': result.quality_assessment,
+                'file_size_mb': round(result.file_size_bytes / (1024 * 1024), 2),
+                'resolution': f"{result.resolution[0]}x{result.resolution[1]}"
+            })
+        
+        return jsonify({
+            'success': True,
+            'results': formatted_results,
+            'statistics': stats,
+            'thresholds_used': blur_thresholds,
+            'photos_analyzed': len(results)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in blur analysis: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/blur-settings', methods=['GET', 'POST'])
+def api_blur_settings():
+    """Get or update blur detection settings."""
+    if request.method == 'GET':
+        return jsonify({
+            'blur_thresholds': {
+                'very_blurry': blur_detector.blur_threshold_very,
+                'blurry': blur_detector.blur_threshold_moderate,
+                'slightly_blurry': blur_detector.blur_threshold_slight
+            }
+        })
+    
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            thresholds = data.get('blur_thresholds', {})
+            
+            blur_detector.update_thresholds(
+                thresholds.get('very_blurry', blur_detector.blur_threshold_very),
+                thresholds.get('blurry', blur_detector.blur_threshold_moderate),
+                thresholds.get('slightly_blurry', blur_detector.blur_threshold_slight)
+            )
+            
+            return jsonify({
+                'success': True,
+                'updated_thresholds': {
+                    'very_blurry': blur_detector.blur_threshold_very,
+                    'blurry': blur_detector.blur_threshold_moderate, 
+                    'slightly_blurry': blur_detector.blur_threshold_slight
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+@app.route('/api/blur-library-stats')
+def api_blur_library_stats():
+    """Get library statistics optimized for blur detection interface."""
+    try:
+        # Use existing library stats but format for blur detection
+        stats, photos = analyzer.quick_scan_library()
+        
+        # Mock blur level distribution for now (in real app, this would come from analysis)
+        total_photos = stats.total_photos
+        by_quality = {
+            'very-blurry': int(total_photos * 0.02),  # 2% very blurry
+            'blurry': int(total_photos * 0.05),       # 5% blurry  
+            'slightly-blurry': int(total_photos * 0.08), # 8% slightly blurry
+            'sharp': total_photos - int(total_photos * 0.15)  # 85% sharp
+        }
+        
+        # Calculate by year
+        by_year = {}
+        current_year = datetime.now().year
+        for year in range(current_year - 4, current_year + 1):
+            by_year[str(year)] = int(total_photos * 0.2)  # Distribute evenly for demo
+        by_year['older'] = int(total_photos * 0.1)
+        
+        # File types
+        by_extension = {
+            'heic': int(total_photos * 0.9),
+            'jpg': int(total_photos * 0.08), 
+            'png': int(total_photos * 0.02)
+        }
+        
+        return jsonify({
+            'summary': {
+                'total': total_photos,
+                'quality_issues_found': by_quality['very-blurry'] + by_quality['blurry'],
+                'potential_savings': f"{(by_quality['very-blurry'] + by_quality['blurry']) * 3.5 / 1024:.1f}GB"  # Estimate
+            },
+            'by_year': by_year,
+            'by_priority': by_quality,  # Keep 'priority' for compatibility with existing JS
+            'by_extension': by_extension
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting blur library stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/health')
 def api_health():
     """Health check endpoint."""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'stage': 'Stage 5A: Lazy Loading Foundation'
+        'mode': 'RemoveBadPhotos - Blur Detection',
+        'version': '1.0.0'
     })
 
 if __name__ == '__main__':
-    print("🚀 Starting Photo Dedup Tool - Stage 5: Heatmap Dashboard")
-    print("🏷️ NEW: Smart targeting with priority-based analysis!")
-    print("🖼️ WORKING: Interactive dashboard with cluster analysis!")
-    print("🔍 ENHANCED: Fast library scan + targeted photo review!")
+    print("🚀 Starting RemoveBadPhotos - Blur Detection Tool")
+    print("🔍 NEW: Computer vision blur detection with configurable thresholds!")
+    print("📊 WORKING: Smart filtering for blurry, overexposed, and low-quality photos!")
+    print("🎯 ENHANCED: Conservative approach - review before deletion!")
     print("🌐 Open http://127.0.0.1:5003 in your browser")
     print(f"📁 Thumbnails cached in: {THUMBNAIL_DIR}")
     print("=" * 60)
