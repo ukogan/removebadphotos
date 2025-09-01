@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Quality Review - Mockup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background: #f8fafc;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .review-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 100px; /* Space for fixed action bar */
+        }
+
+        /* Header */
+        .review-header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .review-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .review-subtitle {
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .review-stats {
+            display: flex;
+            gap: 32px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-number {
+            font-weight: 700;
+            color: #3182ce;
+        }
+
+        /* Keyboard hints */
+        .keyboard-hints {
+            background: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .keyboard-hints strong {
+            color: #2d3748;
+        }
+
+        /* Photo Grid */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .photo-item {
+            aspect-ratio: 1;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            border: 2px solid transparent;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .photo-item:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        /* Photo placeholder with blur level colors */
+        .photo-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .blur-very {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+        }
+
+        .blur-moderate {
+            background: linear-gradient(135deg, #ea580c, #c2410c);
+        }
+
+        .blur-slight {
+            background: linear-gradient(135deg, #d97706, #92400e);
+        }
+
+        /* Deletion marking overlay */
+        .photo-item.marked-for-deletion {
+            transform: scale(0.95);
+        }
+
+        .photo-item.marked-for-deletion::after {
+            content: "🗑️";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(239, 68, 68, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            backdrop-filter: blur(2px);
+        }
+
+        .photo-item.marked-for-deletion .photo-placeholder {
+            filter: brightness(0.6);
+        }
+
+        /* Blur level indicator */
+        .blur-indicator {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 2px solid #e2e8f0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        }
+
+        .action-summary {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .summary-stat {
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .summary-stat strong {
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+
+        .marked-count {
+            color: #dc2626;
+            font-weight: 700;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #edf2f7;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-danger:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 8px;
+            }
+
+            .review-stats {
+                gap: 16px;
+            }
+
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-summary {
+                justify-content: center;
+            }
+
+            .action-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="review-container">
+        <!-- Header -->
+        <div class="review-header">
+            <h1 class="review-title">📷 Photo Quality Review</h1>
+            <p class="review-subtitle">Review and mark photos with quality issues for deletion</p>
+            <div class="review-stats">
+                <div class="stat-item">
+                    <span class="stat-number">147</span>
+                    <span>photos need review</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">353</span>
+                    <span>sharp photos (hidden)</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">1.8 GB</span>
+                    <span>potential savings</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keyboard Hints -->
+        <div class="keyboard-hints">
+            <strong>Quick actions:</strong> Click or press <strong>D</strong> to mark for deletion • <strong>Enter</strong> for full-screen preview • <strong>Space</strong> to navigate
+        </div>
+
+        <!-- Photo Grid -->
+        <div class="photo-grid" id="photo-grid">
+            <!-- Photos will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Fixed Action Bar -->
+    <div class="action-bar">
+        <div class="action-summary">
+            <div class="summary-stat">
+                Reviewing: <strong>147 photos</strong>
+            </div>
+            <div class="summary-stat">
+                Marked: <strong class="marked-count" id="marked-count">0</strong>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button class="btn btn-secondary" onclick="showOnlyMarked()">
+                👁️ Show Only Marked
+            </button>
+            <button class="btn btn-secondary" onclick="clearAllMarked()">
+                ↩️ Clear All
+            </button>
+            <button class="btn btn-danger" id="delete-btn" onclick="confirmDeletion()" disabled>
+                🗑️ Mark for Deletion
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for mockup
+        const photos = [
+            { id: 1, blur: 'very', marked: false },
+            { id: 2, blur: 'moderate', marked: true },
+            { id: 3, blur: 'very', marked: true },
+            { id: 4, blur: 'slight', marked: false },
+            { id: 5, blur: 'moderate', marked: false },
+            { id: 6, blur: 'very', marked: true },
+            { id: 7, blur: 'slight', marked: false },
+            { id: 8, blur: 'moderate', marked: false },
+            { id: 9, blur: 'very', marked: false },
+            { id: 10, blur: 'slight', marked: true },
+            { id: 11, blur: 'moderate', marked: false },
+            { id: 12, blur: 'very', marked: false },
+            { id: 13, blur: 'slight', marked: false },
+            { id: 14, blur: 'moderate', marked: true },
+            { id: 15, blur: 'very', marked: false },
+            { id: 16, blur: 'slight', marked: false },
+            { id: 17, blur: 'moderate', marked: false },
+            { id: 18, blur: 'very', marked: true },
+            { id: 19, blur: 'slight', marked: false },
+            { id: 20, blur: 'moderate', marked: false },
+            { id: 21, blur: 'very', marked: false },
+            { id: 22, blur: 'slight', marked: false },
+            { id: 23, blur: 'moderate', marked: true },
+            { id: 24, blur: 'very', marked: false },
+        ];
+
+        let currentFocusIndex = 0;
+
+        function renderPhotos() {
+            const grid = document.getElementById('photo-grid');
+            grid.innerHTML = '';
+
+            photos.forEach((photo, index) => {
+                const photoDiv = document.createElement('div');
+                photoDiv.className = `photo-item ${photo.marked ? 'marked-for-deletion' : ''}`;
+                photoDiv.tabIndex = 0;
+                photoDiv.dataset.photoId = photo.id;
+                photoDiv.dataset.index = index;
+
+                const blurClass = {
+                    'very': 'blur-very',
+                    'moderate': 'blur-moderate',
+                    'slight': 'blur-slight'
+                }[photo.blur];
+
+                const blurLabel = {
+                    'very': 'Very Blurry',
+                    'moderate': 'Blurry',
+                    'slight': 'Slightly Blurry'
+                }[photo.blur];
+
+                photoDiv.innerHTML = `
+                    <div class="photo-placeholder ${blurClass}">
+                        Photo ${photo.id}
+                    </div>
+                    <div class="blur-indicator">${blurLabel}</div>
+                `;
+
+                photoDiv.addEventListener('click', () => toggleMarked(index));
+                photoDiv.addEventListener('keydown', (e) => {
+                    if (e.key === 'd' || e.key === 'D') {
+                        e.preventDefault();
+                        toggleMarked(index);
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        // In real app, this would open full-screen preview
+                        alert(`Full-screen preview for Photo ${photo.id}`);
+                    }
+                });
+
+                grid.appendChild(photoDiv);
+            });
+
+            updateMarkedCount();
+        }
+
+        function toggleMarked(index) {
+            photos[index].marked = !photos[index].marked;
+            renderPhotos();
+            
+            // Update focus after re-render
+            const photoItems = document.querySelectorAll('.photo-item');
+            if (photoItems[index]) {
+                photoItems[index].focus();
+            }
+        }
+
+        function updateMarkedCount() {
+            const markedCount = photos.filter(p => p.marked).length;
+            document.getElementById('marked-count').textContent = markedCount;
+            document.getElementById('delete-btn').disabled = markedCount === 0;
+        }
+
+        function showOnlyMarked() {
+            // In real app, this would filter the grid
+            const markedPhotos = photos.filter(p => p.marked);
+            alert(`Showing ${markedPhotos.length} marked photos only`);
+        }
+
+        function clearAllMarked() {
+            photos.forEach(photo => photo.marked = false);
+            renderPhotos();
+        }
+
+        function confirmDeletion() {
+            const markedCount = photos.filter(p => p.marked).length;
+            if (confirm(`Delete ${markedCount} selected photos permanently?`)) {
+                // In real app, this would call the deletion API
+                alert(`Would delete ${markedCount} photos`);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const photoItems = document.querySelectorAll('.photo-item');
+            
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocusIndex = Math.min(currentFocusIndex + 1, photoItems.length - 1);
+                photoItems[currentFocusIndex].focus();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocusIndex = Math.max(currentFocusIndex - 1, 0);
+                photoItems[currentFocusIndex].focus();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                // Space to navigate to next
+                currentFocusIndex = Math.min(currentFocusIndex + 1, photoItems.length - 1);
+                photoItems[currentFocusIndex].focus();
+            }
+        });
+
+        // Initialize
+        renderPhotos();
+
+        // Focus first photo
+        setTimeout(() => {
+            const firstPhoto = document.querySelector('.photo-item');
+            if (firstPhoto) {
+                firstPhoto.focus();
+            }
+        }, 100);
+    </script>
+</body>
+</html>
