@@ -177,81 +177,6 @@
             font-size: 0.85rem;
             opacity: 0.8;
         }
-        .results-preview {
-            background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
-            border: 2px solid #86efac;
-            border-radius: 16px;
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .preview-stats {
-            display: flex;
-            justify-content: space-around;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-        .preview-stat { text-align: center; }
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #059669;
-            display: block;
-        }
-        .stat-label {
-            color: #065f46;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 0.5px;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .btn {
-            padding: 16px 32px;
-            border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-primary { background: #3182ce; color: white; }
-        .btn-secondary {
-            background: #f7fafc;
-            color: #4a5568;
-            border: 2px solid #e2e8f0;
-        }
-
-        /* Advanced File Size Options */
-        .advanced-options {
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            overflow: hidden;
-        }
-
-        .advanced-header {
-            padding: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .advanced-header:hover {
-            background: #f1f5f9;
-        }
 
         .advanced-header h3 {
             display: flex;
@@ -311,82 +236,45 @@
             color: #2d3748;
         }
 
-        .dual-range-wrapper {
-            position: relative;
-            height: 40px;
-            background: #f1f5f9;
-            border-radius: 20px;
-            margin: 20px 0;
-        }
 
-        .dual-range-track {
-            position: absolute;
-            top: 50%;
-            left: 10px;
-            right: 10px;
-            height: 6px;
-            background: #cbd5e0;
-            border-radius: 3px;
-            transform: translateY(-50%);
-        }
 
-        .dual-range-fill {
-            position: absolute;
-            height: 6px;
-            background: linear-gradient(90deg, #3182ce, #2563eb);
-            border-radius: 3px;
-            top: 50%;
-            transform: translateY(-50%);
-            left: 25%;
-            width: 50%;
-        }
-
-        .range-thumb {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border: 3px solid #3182ce;
-            border-radius: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
+        /* Button Styles */
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-
-        .range-thumb.min { left: 25%; }
-        .range-thumb.max { left: 75%; }
-
-        .quintile-options {
             display: flex;
+            align-items: center;
+            justify-content: center;
             gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        .quintile-btn {
-            padding: 8px 16px;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
             transition: all 0.2s ease;
-            flex: 1;
-            min-width: 100px;
-            text-align: center;
         }
-
-        .quintile-btn:hover {
+        .btn-primary { 
+            background: #3182ce; 
+            color: white; 
+        }
+        .btn-primary:hover {
+            background: #2c5aa0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+        }
+        .btn-primary:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+        .btn-secondary:hover {
             border-color: #3182ce;
             background: #eff6ff;
-        }
-
-        .quintile-btn.active {
-            background: #3182ce;
-            color: white;
-            border-color: #2563eb;
         }
 
         /* Progress and Results Styles */
@@ -946,63 +834,11 @@
 
             </div>
 
-            <!-- Advanced File Size Options -->
-            <div class="advanced-options" id="advancedOptions">
-                <div class="advanced-header" onclick="toggleAdvanced()">
-                    <h3>
-                        <div class="category-icon filesize">📏</div>
-                        Advanced File Size Filters
-                    </h3>
-                    <div class="expand-icon">▼</div>
-                </div>
-                <div class="advanced-content">
-                    <div class="advanced-inner">
-                        <div class="size-range-container">
-                            <div class="size-range-labels">
-                                <span>0 MB</span>
-                                <span>100+ MB</span>
-                            </div>
-                            <div class="size-range-values">
-                                5.2 MB - 47.8 MB
-                            </div>
-                            <div class="dual-range-wrapper">
-                                <div class="dual-range-track"></div>
-                                <div class="dual-range-fill"></div>
-                                <div class="range-thumb min"></div>
-                                <div class="range-thumb max"></div>
-                            </div>
-                            
-                            <div class="quintile-options">
-                                <button class="quintile-btn">Smallest 20%</button>
-                                <button class="quintile-btn">Small</button>
-                                <button class="quintile-btn active">Medium</button>
-                                <button class="quintile-btn">Large</button>
-                                <button class="quintile-btn">Largest 20%</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            <div class="results-preview">
-                <div class="preview-stats">
-                    <div class="preview-stat">
-                        <span class="stat-number" id="preview-photos">Ready</span>
-                        <span class="stat-label">Analysis Status</span>
-                    </div>
-                    <div class="preview-stat">
-                        <span class="stat-number" id="preview-savings">-</span>
-                        <span class="stat-label">Results pending</span>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="analyzePhotos()" id="analyze-btn">
-                        🔍 Find Blurry Photos
-                    </button>
-                    <button class="btn btn-secondary" onclick="saveFilters()">
-                        💾 Save filters
-                    </button>
-                </div>
+            <!-- Analysis Action -->
+            <div class="analysis-action" id="analysis-action" style="display: none; text-align: center; margin: 30px 0;">
+                <button class="btn btn-primary" onclick="analyzePhotos()" id="analyze-btn">
+                    🔍 Analyze Selected Bucket for Blur
+                </button>
             </div>
 
             <!-- Progress Section -->
@@ -1109,7 +945,6 @@
     <script>
         let bucketsData = null;
         let selectedBucket = null;
-        let selectedSizeRange = null;
 
         async function loadBucketsData() {
             try {
@@ -1117,7 +952,6 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 bucketsData = await response.json();
                 populateBuckets();
-                updatePreview();
             } catch (error) {
                 console.error('Failed to load buckets data:', error);
                 loadDemoBuckets();
@@ -1140,7 +974,6 @@
                 ]
             };
             populateBuckets();
-            updatePreview();
         }
 
         function populateBuckets() {
@@ -1180,14 +1013,17 @@
             selectedBucket = bucketId;
             populateBuckets();
             updateActiveFilters();
-            updatePreview();
+            
+            // Show analyze button when bucket is selected
+            document.getElementById('analysis-action').style.display = selectedBucket ? 'block' : 'none';
+            
+            // Reset button text when selecting new bucket
+            if (selectedBucket) {
+                document.getElementById('analyze-btn').textContent = '🔍 Analyze Selected Bucket for Blur';
+            }
         }
 
 
-        function toggleAdvanced() {
-            const advancedOptions = document.getElementById('advancedOptions');
-            advancedOptions.classList.toggle('expanded');
-        }
 
         function updateActiveFilters() {
             const activeTagsContainer = document.getElementById('active-tags');
@@ -1199,47 +1035,24 @@
                 tags.push(`<div class="filter-tag">📅 ${bucketLabel} <button class="close-btn" onclick="clearBucket()">×</button></div>`);
             }
 
-            if (selectedSizeRange) {
-                tags.push(`<div class="filter-tag">📏 ${selectedSizeRange} <button class="close-btn" onclick="clearSizeRange()">×</button></div>`);
-            }
 
             activeTagsContainer.innerHTML = tags.join('');
         }
 
-        function updatePreview() {
-            const photosElement = document.getElementById('preview-photos');
-            const savingsElement = document.getElementById('preview-savings');
-
-            if (selectedBucket) {
-                photosElement.textContent = 'Ready';
-                savingsElement.textContent = 'Click to analyze';
-            } else {
-                photosElement.textContent = 'Select bucket';
-                savingsElement.textContent = 'Choose photos first';
-            }
-        }
 
         function clearAllFilters() {
             selectedBucket = null;
-            selectedSizeRange = null;
             populateBuckets();
             updateActiveFilters();
-            updatePreview();
         }
         
         function clearBucket() {
             selectedBucket = null;
             populateBuckets();
             updateActiveFilters();
-            updatePreview();
+            document.getElementById('analysis-action').style.display = 'none';
         }
 
-        function clearSizeRange() {
-            selectedSizeRange = null;
-            document.querySelectorAll('.quintile-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('.size-range-values').textContent = 'All sizes included';
-            updateActiveFilters();
-        }
 
         async function analyzePhotos() {
             // Check if bucket is selected
@@ -1326,7 +1139,7 @@
             // Store results globally
             analysisResults = result;
             
-            // Hide progress and bucket selection
+            // Hide progress (keep bucket selection visible for next analysis)
             document.getElementById('progress-section').classList.remove('visible');
             
             // Filter to only show really bad photos (blur score under 500)
@@ -1375,6 +1188,10 @@
             
             // Render photo grid
             renderPhotoGrid(problematicPhotos);
+            
+            // Re-enable analyze button for next analysis
+            document.getElementById('analyze-btn').disabled = false;
+            document.getElementById('analyze-btn').textContent = '🔍 Analyze Another Bucket';
         }
         
         function renderPhotoGrid(photos) {
@@ -1544,9 +1361,6 @@
             document.getElementById('progress-text').textContent = 'Ready for new analysis';
         }
 
-        function saveFilters() {
-            alert('Filter set saving will be implemented in a future update.');
-        }
 
         // Full-screen preview functionality
         function openPreview(photoIndex) {
@@ -1754,41 +1568,9 @@
             }
         }
 
-        // Quintile button functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.quintile-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Remove active from siblings
-                    this.parentNode.querySelectorAll('.quintile-btn').forEach(b => {
-                        b.classList.remove('active');
-                    });
-                    
-                    // Make this one active
-                    this.classList.add('active');
-                    
-                    // Update size range display
-                    const container = this.closest('.size-range-container');
-                    const values = container.querySelector('.size-range-values');
-                    
-                    // Demo values for different quintiles
-                    const ranges = {
-                        'Smallest 20%': '0.1 MB - 2.1 MB',
-                        'Small': '2.1 MB - 8.4 MB', 
-                        'Medium': '8.4 MB - 15.7 MB',
-                        'Large': '15.7 MB - 35.2 MB',
-                        'Largest 20%': '35.2 MB - 98.5 MB'
-                    };
-                    
-                    const label = this.textContent.trim();
-                    if (ranges[label]) {
-                        values.textContent = ranges[label];
-                        selectedSizeRange = ranges[label];
-                        updateActiveFilters();
-                    }
-                });
-            });
 
-            // Initialize the interface
+        // Initialize the interface when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
             loadBucketsData();
         });
     </script>
