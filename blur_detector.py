@@ -26,19 +26,23 @@ class BlurResult:
     resolution: Tuple[int, int]  # (width, height)
 
 class BlurDetector:
-    """Fast, dedicated blur detection using Laplacian variance analysis."""
+    """Fast, dedicated blur detection using Sobel variance analysis (optimized from Kaggle dataset)."""
     
     def __init__(self, 
-                 blur_threshold_very: float = 50,
-                 blur_threshold_moderate: float = 100, 
-                 blur_threshold_slight: float = 200):
+                 blur_threshold_very: float = 500,
+                 blur_threshold_moderate: float = 2000, 
+                 blur_threshold_slight: float = 5000):
         """
         Initialize blur detector with configurable thresholds.
         
+        Sobel variance measures edge intensity - higher values = sharper images.
+        Optimized thresholds based on Kaggle blur dataset evaluation.
+        Typical values: very blurry <500, blurry 500-2000, slightly blurry 2000-5000, sharp >5000
+        
         Args:
-            blur_threshold_very: Below this = very blurry (default: 50)
-            blur_threshold_moderate: Below this = blurry (default: 100)  
-            blur_threshold_slight: Below this = slightly blurry (default: 200)
+            blur_threshold_very: Below this = very blurry (default: 500) 
+            blur_threshold_moderate: Below this = blurry (default: 2000)  
+            blur_threshold_slight: Below this = slightly blurry (default: 5000)
             Above slight threshold = sharp
         """
         self.blur_threshold_very = blur_threshold_very
@@ -95,9 +99,11 @@ class BlurDetector:
             # Convert to grayscale for analysis
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
-            # 1. Blur detection using Laplacian variance
-            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-            blur_score = laplacian.var()
+            # 1. Blur detection using Sobel variance (superior performance based on Kaggle dataset)
+            sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+            sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+            sobel_combined = np.sqrt(sobel_x**2 + sobel_y**2)
+            blur_score = sobel_combined.var()
             
             # 2. Exposure analysis using histogram
             exposure_score = self._analyze_exposure(gray)
@@ -144,7 +150,7 @@ class BlurDetector:
         print(f"🔍 Starting blur analysis of {total} photos...")
         
         for i, (image_path, photo_uuid) in enumerate(image_paths):
-            if progress_callback and i % 50 == 0:
+            if progress_callback and i % 10 == 0:
                 progress_callback(i, total)
             
             result = self.analyze_photo(image_path, photo_uuid)

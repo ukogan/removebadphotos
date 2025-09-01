@@ -388,6 +388,525 @@
             color: white;
             border-color: #2563eb;
         }
+
+        /* Progress and Results Styles */
+        .progress-section {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 2px solid #60a5fa;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .progress-section.visible {
+            display: block;
+        }
+
+        .progress-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #3182ce, #1d4ed8);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .progress-text {
+            margin-top: 15px;
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .results-section {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 2px solid #4ade80;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .results-section.visible {
+            display: block;
+        }
+
+        .results-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #166534;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .results-stat {
+            background: white;
+            border: 2px solid #86efac;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .results-stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #059669;
+            display: block;
+        }
+
+        .results-stat-label {
+            color: #065f46;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Bucket Info Styles */
+        .bucket-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .bucket-info-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+
+        .bucket-info-stat {
+            text-align: center;
+        }
+
+        .bucket-info-number {
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 1.2rem;
+        }
+
+        /* Photo Grid Styles */
+        .photo-review-container {
+            display: none;
+        }
+
+        .photo-review-container.visible {
+            display: block;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .photo-item {
+            aspect-ratio: 1;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            border: 2px solid transparent;
+            background: #f8fafc;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .photo-item:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        .photo-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-loading {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e2e8f0;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        /* Photo deletion marking */
+        .photo-item.marked-for-deletion {
+            transform: scale(0.95);
+        }
+
+        .photo-item.marked-for-deletion::after {
+            content: "🗑️";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(239, 68, 68, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            backdrop-filter: blur(2px);
+        }
+
+        .photo-item.marked-for-deletion .photo-thumbnail {
+            filter: brightness(0.6);
+        }
+
+        /* Blur level indicator */
+        .blur-indicator {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* Action Bar */
+        .photo-action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 2px solid #e2e8f0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .action-summary {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .summary-stat {
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .summary-stat strong {
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+
+        .marked-count {
+            color: #dc2626;
+            font-weight: 700;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .action-btn-secondary:hover {
+            background: #edf2f7;
+        }
+
+        .action-btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .action-btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .action-btn-danger:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Review header */
+        .review-header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .review-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .review-subtitle {
+            color: #718096;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .review-stats {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-number {
+            font-weight: 700;
+            color: #3182ce;
+        }
+
+        .keyboard-hints {
+            background: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .keyboard-hints strong {
+            color: #2d3748;
+        }
+
+        /* Full-screen preview modal */
+        .preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-modal.visible {
+            display: flex;
+        }
+
+        .preview-container {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .preview-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .preview-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.15s ease;
+        }
+
+        .preview-btn:hover {
+            background: white;
+        }
+
+        .preview-btn.danger {
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+        }
+
+        .preview-btn.danger:hover {
+            background: rgba(220, 38, 38, 1);
+        }
+
+        .preview-btn.marked {
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+        }
+
+        .preview-btn.marked:hover {
+            background: rgba(34, 197, 94, 1);
+        }
+
+        .preview-navigation {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+
+        .preview-navigation:hover {
+            background: white;
+        }
+
+        .preview-nav-prev {
+            left: 20px;
+        }
+
+        .preview-nav-next {
+            right: 20px;
+        }
+
+        .preview-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .detail-item {
+            font-size: 0.9rem;
+            margin-right: 16px;
+        }
+
+        .detail-item strong {
+            color: #fff;
+            opacity: 0.8;
+        }
+
+        .preview-details {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+
+        .preview-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-detail-label {
+            color: #a0aec0;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .preview-detail-value {
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .preview-shortcuts {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .preview-loading {
+            color: white;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
@@ -411,38 +930,20 @@
             </div>
 
             <div class="filter-categories">
-                <!-- Year Filter -->
+                <!-- Photo Bucket Selector -->
                 <div class="filter-category">
                     <div class="category-header">
                         <div class="category-icon year">📅</div>
-                        <div class="category-title">Year</div>
+                        <div class="category-title">Photo Buckets (1000 photos each)</div>
                     </div>
-                    <div class="filter-options" id="year-options">
-                        <!-- Year options will be populated by JavaScript -->
+                    <div class="bucket-info" id="bucket-info">
+                        <!-- Bucket info will be populated by JavaScript -->
                     </div>
-                </div>
-
-                <!-- Priority Filter -->
-                <div class="filter-category">
-                    <div class="category-header">
-                        <div class="category-icon priority">🎯</div>
-                        <div class="category-title">Photo Quality Issues</div>
-                    </div>
-                    <div class="filter-options" id="priority-options">
-                        <!-- Priority options will be populated by JavaScript -->
+                    <div class="filter-options" id="bucket-options">
+                        <!-- Bucket options will be populated by JavaScript -->
                     </div>
                 </div>
 
-                <!-- File Types Filter -->
-                <div class="filter-category">
-                    <div class="category-header">
-                        <div class="category-icon filetype">📱</div>
-                        <div class="category-title">File Types</div>
-                    </div>
-                    <div class="filter-options" id="filetype-options">
-                        <!-- File type options will be populated by JavaScript -->
-                    </div>
-                </div>
             </div>
 
             <!-- Advanced File Size Options -->
@@ -481,154 +982,207 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
             <div class="results-preview">
                 <div class="preview-stats">
                     <div class="preview-stat">
-                        <span class="stat-number" id="preview-photos">-</span>
-                        <span class="stat-label">Quality issues found</span>
+                        <span class="stat-number" id="preview-photos">Ready</span>
+                        <span class="stat-label">Analysis Status</span>
                     </div>
                     <div class="preview-stat">
                         <span class="stat-number" id="preview-savings">-</span>
-                        <span class="stat-label">Potential savings</span>
+                        <span class="stat-label">Results pending</span>
                     </div>
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="applyFilters()" id="find-duplicates-btn">
-                        🔍 Analyze Photo Quality
+                    <button class="btn btn-primary" onclick="analyzePhotos()" id="analyze-btn">
+                        🔍 Find Blurry Photos
                     </button>
                     <button class="btn btn-secondary" onclick="saveFilters()">
                         💾 Save filters
                     </button>
                 </div>
             </div>
+
+            <!-- Progress Section -->
+            <div class="progress-section" id="progress-section">
+                <div class="progress-title">🔍 Analyzing Photos for Blur</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-text" id="progress-text">Starting analysis...</div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="results-section">
+                <div class="results-title">✅ Blur Analysis Complete</div>
+                <div class="results-stats" id="results-stats">
+                    <!-- Results will be populated by JavaScript -->
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="viewBlurryPhotos()">
+                        🖼️ View Blurry Photos
+                    </button>
+                    <button class="btn btn-secondary" onclick="startNewAnalysis()">
+                        🔄 New Analysis
+                    </button>
+                </div>
+            </div>
+
+            <!-- Photo Review Interface -->
+            <div class="photo-review-container" id="photo-review-container">
+                <div class="review-header">
+                    <h1 class="review-title">📷 Photo Quality Review</h1>
+                    <p class="review-subtitle">Review and mark photos with quality issues for deletion</p>
+                    <div class="review-stats" id="review-stats-container">
+                        <!-- Stats will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="keyboard-hints">
+                    <strong>Quick actions:</strong> Click or press <strong>D</strong> to mark for deletion • <strong>Enter</strong> for full-screen preview • <strong>O</strong> to open in Photos app • <strong>Space</strong> to navigate
+                    <br><strong>Blur scores:</strong> Lower = blurrier (Very Blurry: &lt;100, Blurry: 100-300, Slightly Blurry: 300-600, Sharp: &gt;600)
+                </div>
+
+                <div class="photo-grid" id="photo-grid">
+                    <!-- Photos will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Review Action Bar -->
+    <div class="photo-action-bar" id="photo-action-bar" style="display: none;">
+        <div class="action-summary">
+            <div class="summary-stat">
+                Reviewing: <strong id="review-total">0 photos</strong>
+            </div>
+            <div class="summary-stat">
+                Marked: <strong class="marked-count" id="marked-count">0</strong>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button class="action-btn action-btn-secondary" onclick="showOnlyMarked()">
+                👁️ Show Only Marked
+            </button>
+            <button class="action-btn action-btn-secondary" onclick="clearAllMarked()">
+                ↩️ Clear All
+            </button>
+            <button class="action-btn action-btn-danger" id="mark-for-deletion-btn" onclick="markForDeletion()" disabled>
+                🗑️ Mark for Deletion
+            </button>
+        </div>
+    </div>
+
+    <!-- Full-screen preview modal -->
+    <div class="preview-modal" id="preview-modal">
+        <div class="preview-shortcuts">
+            <strong>Shortcuts:</strong> ← → Navigate • D Mark • O Open in Photos • ESC Close
+        </div>
+        
+        <div class="preview-container">
+            <button class="preview-navigation preview-nav-prev" id="preview-nav-prev" onclick="navigatePreview(-1)">‹</button>
+            
+            <div class="preview-loading" id="preview-loading">Loading full-size image...</div>
+            <img class="preview-image" id="preview-image" style="display: none;" 
+                 onload="document.getElementById('preview-loading').style.display='none'; this.style.display='block';"
+                 onerror="document.getElementById('preview-loading').textContent='Failed to load full-size image';">
+            
+            <button class="preview-navigation preview-nav-next" id="preview-nav-next" onclick="navigatePreview(1)">›</button>
+            
+            <div class="preview-controls">
+                <button class="preview-btn danger" id="preview-mark-btn" onclick="togglePreviewMarking()">
+                    🗑️ Mark for Deletion
+                </button>
+                <button class="preview-btn" onclick="closePreview()">✕ Close</button>
+            </div>
+            
+            <div class="preview-info">
+                <div class="preview-details" id="preview-details">
+                    <!-- Photo details will be populated by JavaScript -->
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        let photosData = null;
-        let selectedYear = 'all';
-        let selectedPriorities = new Set(['very-blurry', 'blurry']);
-        let selectedFileTypes = new Set(['heic']);
+        let bucketsData = null;
+        let selectedBucket = null;
         let selectedSizeRange = null;
 
-        async function loadPhotosData() {
+        async function loadBucketsData() {
             try {
-                const response = await fetch('/api/blur-library-stats');
+                const response = await fetch('/api/photo-buckets');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                photosData = await response.json();
-                populateFilters();
+                bucketsData = await response.json();
+                populateBuckets();
                 updatePreview();
             } catch (error) {
-                console.error('Failed to load photos data:', error);
-                loadDemoData();
+                console.error('Failed to load buckets data:', error);
+                loadDemoBuckets();
             }
         }
 
-        function loadDemoData() {
-            // Demo data for blur detection interface
-            photosData = {
-                summary: { total: 12987, quality_issues_found: 1547, potential_savings: '0.8GB' },
-                by_year: { 2024: 3520, 2023: 2298, 2022: 1845, 2021: 1234, older: 4090 },
-                by_priority: { 'very-blurry': 142, 'blurry': 485, 'slightly-blurry': 673, 'sharp': 11687 },
-                by_extension: { heic: 12041, jpg: 780, png: 141 }
+        function loadDemoBuckets() {
+            // Demo data for bucket selection interface
+            bucketsData = {
+                success: true,
+                total_photos: 12660,
+                total_buckets: 26,
+                bucket_size: 500,
+                buckets: [
+                    { bucket_id: 'bucket_1', date_range: 'Jan 2019 - Mar 2019', photo_count: 500 },
+                    { bucket_id: 'bucket_2', date_range: 'Apr 2019 - Jun 2019', photo_count: 500 },
+                    { bucket_id: 'bucket_3', date_range: 'Jul 2019 - Sep 2019', photo_count: 500 },
+                    { bucket_id: 'bucket_4', date_range: 'Oct 2019 - Dec 2019', photo_count: 500 },
+                    { bucket_id: 'bucket_5', date_range: 'Jan 2020 - Mar 2020', photo_count: 500 }
+                ]
             };
-            populateFilters();
+            populateBuckets();
             updatePreview();
         }
 
-        function populateFilters() {
-            if (!photosData) return;
+        function populateBuckets() {
+            if (!bucketsData || !bucketsData.success) return;
 
-            // Populate year options
-            const yearOptions = document.getElementById('year-options');
-            yearOptions.innerHTML = `
-                <div class="filter-option ${selectedYear === 'all' ? 'selected' : ''}" onclick="selectYear('all')">
-                    <div class="option-label">All</div>
-                    <div class="option-count">${photosData.summary.total.toLocaleString()} photos</div>
-                </div>
-                ${Object.entries(photosData.by_year).map(([year, count]) => `
-                    <div class="filter-option ${selectedYear === year ? 'selected' : ''}" onclick="selectYear('${year}')">
-                        <div class="option-label">${year === 'older' ? 'Older' : year}</div>
-                        <div class="option-count">${count.toLocaleString()} photos</div>
+            // Populate bucket info
+            const bucketInfo = document.getElementById('bucket-info');
+            bucketInfo.innerHTML = `
+                <div>Select a chronological bucket of photos to analyze for blur:</div>
+                <div class="bucket-info-stats">
+                    <div class="bucket-info-stat">
+                        <div class="bucket-info-number">${bucketsData.total_photos.toLocaleString()}</div>
+                        <div>Total Photos</div>
                     </div>
-                `).join('')}
+                    <div class="bucket-info-stat">
+                        <div class="bucket-info-number">${bucketsData.total_buckets}</div>
+                        <div>Buckets</div>
+                    </div>
+                    <div class="bucket-info-stat">
+                        <div class="bucket-info-number">${bucketsData.bucket_size}</div>
+                        <div>Photos/Bucket</div>
+                    </div>
+                </div>
             `;
 
-            // Populate quality options (formerly priority)
-            const qualityLabels = {
-                'very-blurry': 'Very Blurry',
-                'blurry': 'Blurry', 
-                'slightly-blurry': 'Slightly Blurry',
-                'sharp': 'Sharp'
-            };
-            const priorityOptions = document.getElementById('priority-options');
-            priorityOptions.innerHTML = Object.entries(photosData.by_priority).map(([priority, count]) => `
-                <div class="filter-option ${selectedPriorities.has(priority) ? 'selected' : ''}" onclick="togglePriority('${priority}')">
-                    <div class="option-label">${qualityLabels[priority] || priority}</div>
-                    <div class="option-count">${count.toLocaleString()} photos</div>
+            // Populate bucket options
+            const bucketOptions = document.getElementById('bucket-options');
+            bucketOptions.innerHTML = bucketsData.buckets.map(bucket => `
+                <div class="filter-option ${selectedBucket === bucket.bucket_id ? 'selected' : ''}" onclick="selectBucket('${bucket.bucket_id}')">
+                    <div class="option-label">${bucket.date_range}</div>
+                    <div class="option-count">${bucket.count_description || (bucket.analyzable_count || bucket.photo_count) + ' photos'}</div>
                 </div>
             `).join('');
-
-            // Populate file type options
-            const filetypeOptions = document.getElementById('filetype-options');
-            filetypeOptions.innerHTML = `
-                <div class="filter-option ${selectedFileTypes.has('heic') ? 'selected' : ''}" onclick="toggleFileType('heic')">
-                    <div class="option-label">HEIC</div>
-                    <div class="option-count">${photosData.by_extension.heic.toLocaleString()} photos</div>
-                </div>
-                <div class="filter-option" onclick="toggleFileType('jpg')">
-                    <div class="option-label">JPG</div>
-                    <div class="option-count">${photosData.by_extension.jpg.toLocaleString()} photos</div>
-                </div>
-                <div class="filter-option" onclick="toggleFileType('png')">
-                    <div class="option-label">PNG</div>
-                    <div class="option-count">${photosData.by_extension.png.toLocaleString()} photos</div>
-                </div>
-                <div class="filter-option" onclick="selectAllFileTypes()">
-                    <div class="option-label">All Types</div>
-                    <div class="option-count">${photosData.summary.total.toLocaleString()} photos</div>
-                </div>
-            `;
         }
 
-        function selectYear(year) {
-            selectedYear = year;
-            populateFilters();
+        function selectBucket(bucketId) {
+            selectedBucket = bucketId;
+            populateBuckets();
             updateActiveFilters();
             updatePreview();
         }
 
-        function togglePriority(priority) {
-            if (selectedPriorities.has(priority)) {
-                selectedPriorities.delete(priority);
-            } else {
-                selectedPriorities.add(priority);
-            }
-            populateFilters();
-            updateActiveFilters();
-            updatePreview();
-        }
-
-        function toggleFileType(type) {
-            if (selectedFileTypes.has(type)) {
-                selectedFileTypes.delete(type);
-            } else {
-                selectedFileTypes.add(type);
-            }
-            populateFilters();
-            updateActiveFilters();
-            updatePreview();
-        }
-
-        function selectAllFileTypes() {
-            selectedFileTypes.clear();
-            populateFilters();
-            updateActiveFilters();
-            updatePreview();
-        }
 
         function toggleAdvanced() {
             const advancedOptions = document.getElementById('advancedOptions');
@@ -639,19 +1193,10 @@
             const activeTagsContainer = document.getElementById('active-tags');
             const tags = [];
 
-            if (selectedYear !== 'all') {
-                const yearLabel = selectedYear === 'older' ? 'Older' : selectedYear;
-                tags.push(`<div class="filter-tag">📅 ${yearLabel} <button class="close-btn" onclick="selectYear('all')">×</button></div>`);
-            }
-
-            if (selectedPriorities.size > 0 && selectedPriorities.size < 4) {
-                const priorities = Array.from(selectedPriorities).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-');
-                tags.push(`<div class="filter-tag">🎯 ${priorities} <button class="close-btn" onclick="clearPriorities()">×</button></div>`);
-            }
-
-            if (selectedFileTypes.size > 0) {
-                const types = Array.from(selectedFileTypes).map(t => t.toUpperCase()).join(', ');
-                tags.push(`<div class="filter-tag">📱 ${types} <button class="close-btn" onclick="selectAllFileTypes()">×</button></div>`);
+            if (selectedBucket) {
+                const bucket = bucketsData.buckets.find(b => b.bucket_id === selectedBucket);
+                const bucketLabel = bucket ? bucket.date_range : selectedBucket;
+                tags.push(`<div class="filter-tag">📅 ${bucketLabel} <button class="close-btn" onclick="clearBucket()">×</button></div>`);
             }
 
             if (selectedSizeRange) {
@@ -662,29 +1207,29 @@
         }
 
         function updatePreview() {
-            // Simulate filtered results based on demo data
             const photosElement = document.getElementById('preview-photos');
             const savingsElement = document.getElementById('preview-savings');
 
-            if (photosData) {
-                photosElement.textContent = photosData.summary.quality_issues_found.toLocaleString();
-                savingsElement.textContent = photosData.summary.potential_savings;
+            if (selectedBucket) {
+                photosElement.textContent = 'Ready';
+                savingsElement.textContent = 'Click to analyze';
+            } else {
+                photosElement.textContent = 'Select bucket';
+                savingsElement.textContent = 'Choose photos first';
             }
         }
 
         function clearAllFilters() {
-            selectedYear = 'all';
-            selectedPriorities.clear();
-            selectedFileTypes.clear();
+            selectedBucket = null;
             selectedSizeRange = null;
-            populateFilters();
+            populateBuckets();
             updateActiveFilters();
             updatePreview();
         }
-
-        function clearPriorities() {
-            selectedPriorities.clear();
-            populateFilters();
+        
+        function clearBucket() {
+            selectedBucket = null;
+            populateBuckets();
             updateActiveFilters();
             updatePreview();
         }
@@ -696,37 +1241,517 @@
             updateActiveFilters();
         }
 
-        async function applyFilters() {
+        async function analyzePhotos() {
+            // Check if bucket is selected
+            if (!selectedBucket) {
+                alert('Please select a photo bucket first');
+                return;
+            }
+            
+            // Show progress section and disable button
+            document.getElementById('progress-section').classList.add('visible');
+            document.getElementById('analyze-btn').disabled = true;
+            
+            // Start real analysis (no fake progress simulation)
+            updateProgress(0, "Starting analysis...");
+            
             try {
-                const filterData = {
-                    year: selectedYear,
-                    priorities: Array.from(selectedPriorities),
-                    file_types: Array.from(selectedFileTypes),
-                    size_range: selectedSizeRange
+                const analysisData = {
+                    bucket_id: selectedBucket
                 };
 
-                const response = await fetch('/api/apply-filters', {
+                // Start analysis (non-blocking)
+                const analysisPromise = fetch('/api/blur-analysis', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(filterData)
+                    body: JSON.stringify(analysisData)
                 });
+                
+                // Start polling for progress updates
+                const progressInterval = setInterval(async () => {
+                    try {
+                        const progressResponse = await fetch('/api/blur-analysis-progress');
+                        if (progressResponse.ok) {
+                            const progress = await progressResponse.json();
+                            
+                            if (progress.status === 'analyzing') {
+                                const percentage = progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
+                                updateProgress(percentage, progress.message);
+                            } else if (progress.status === 'complete') {
+                                clearInterval(progressInterval);
+                                updateProgress(100, progress.message);
+                            }
+                        }
+                    } catch (progressError) {
+                        console.warn('Progress polling error:', progressError);
+                    }
+                }, 500); // Poll every 500ms
+                
+                // Wait for analysis to complete
+                const response = await analysisPromise;
+                clearInterval(progressInterval);
 
                 if (response.ok) {
                     const result = await response.json();
-                    if (result.redirect_url) {
-                        window.location.href = result.redirect_url;
-                    }
+                    updateProgress(100, "Analysis complete!");
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    displayAnalysisResults(result);
                 } else {
-                    throw new Error('Filter application failed');
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.error || `Server error: ${response.status}`);
                 }
             } catch (error) {
-                console.error('Failed to apply filters:', error);
-                alert('Failed to apply filters. Please try again.');
+                console.error('Failed to analyze photos:', error);
+                updateProgress(0, `Error: ${error.message}`);
+                document.getElementById('analyze-btn').disabled = false;
+                setTimeout(() => {
+                    document.getElementById('progress-section').classList.remove('visible');
+                }, 3000);
             }
+        }
+        
+        function updateProgress(percentage, text) {
+            document.getElementById('progress-fill').style.width = percentage + '%';
+            document.getElementById('progress-text').textContent = text;
+        }
+        
+        // Global variables for photo review
+        let analysisResults = null;
+        let photoMarking = new Map(); // photo UUID -> marked boolean
+        let currentFocusIndex = 0;
+        let currentPhotos = []; // Array of photos currently displayed
+        let currentPreviewIndex = -1; // Index in currentPhotos array
+
+        function displayAnalysisResults(result) {
+            // Store results globally
+            analysisResults = result;
+            
+            // Hide progress and bucket selection
+            document.getElementById('progress-section').classList.remove('visible');
+            
+            // Filter to only show really bad photos (blur score under 500)
+            let problematicPhotos = result.results.filter(photo => 
+                photo.blur_score < 500
+            );
+            
+            // Sort by blur severity (lowest blur score = most blurry first)
+            problematicPhotos.sort((a, b) => a.blur_score - b.blur_score);
+            
+            // Calculate stats (all problematic photos have score < 500)
+            const totalProblematic = problematicPhotos.length;
+            const totalAnalyzed = result.results.length;
+            const excludedCount = totalAnalyzed - totalProblematic;
+            
+            // Estimate potential savings (rough calculation)
+            const avgFileSize = problematicPhotos.reduce((sum, p) => sum + p.file_size_mb, 0) / problematicPhotos.length || 0;
+            const potentialSavings = (avgFileSize * problematicPhotos.length / 1024).toFixed(1);
+            
+            // Show photo review interface
+            document.getElementById('photo-review-container').classList.add('visible');
+            document.getElementById('photo-action-bar').style.display = 'flex';
+            
+            // Populate review stats
+            const reviewStatsContainer = document.getElementById('review-stats-container');
+            reviewStatsContainer.innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-number">${totalProblematic}</span>
+                    <span>very bad photos (score < 500)</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${excludedCount}</span>
+                    <span>better photos (excluded)</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${potentialSavings} GB</span>
+                    <span>potential savings</span>
+                </div>
+            `;
+            
+            // Update action bar
+            document.getElementById('review-total').textContent = `${totalProblematic} photos`;
+            
+            // Store the sorted problematic photos globally for preview functions
+            currentPhotos = problematicPhotos;
+            
+            // Render photo grid
+            renderPhotoGrid(problematicPhotos);
+        }
+        
+        function renderPhotoGrid(photos) {
+            const photoGrid = document.getElementById('photo-grid');
+            photoGrid.innerHTML = '';
+            
+            photos.forEach((photo, index) => {
+                const photoDiv = document.createElement('div');
+                photoDiv.className = `photo-item ${photoMarking.get(photo.uuid) ? 'marked-for-deletion' : ''}`;
+                photoDiv.tabIndex = 0;
+                photoDiv.dataset.photoUuid = photo.uuid;
+                photoDiv.dataset.index = index;
+                
+                // Create blur level label
+                const blurLabels = {
+                    'very-blurry': 'Very Blurry',
+                    'blurry': 'Blurry',
+                    'slightly-blurry': 'Slightly Blurry'
+                };
+                
+                photoDiv.innerHTML = `
+                    <div class="photo-loading">Loading...</div>
+                    <img class="photo-thumbnail" 
+                         src="/api/thumbnails/${photo.uuid}" 
+                         alt="Photo ${photo.uuid}"
+                         onload="this.previousElementSibling.style.display='none'"
+                         onerror="this.previousElementSibling.textContent='Failed to load'">
+                    <div class="blur-indicator">${blurLabels[photo.blur_level] || photo.blur_level}</div>
+                `;
+                
+                // Add click handler
+                photoDiv.addEventListener('click', () => togglePhotoMarking(photo.uuid, index));
+                
+                // Add keyboard handlers
+                photoDiv.addEventListener('keydown', (e) => {
+                    if (e.key === 'd' || e.key === 'D') {
+                        e.preventDefault();
+                        togglePhotoMarking(photo.uuid, index);
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        openPreview(index);
+                    } else if (e.key === 'o' || e.key === 'O') {
+                        e.preventDefault();
+                        openInPhotosApp(photo.uuid);
+                    }
+                });
+                
+                photoGrid.appendChild(photoDiv);
+            });
+            
+            updateMarkedCount();
+        }
+        
+        function togglePhotoMarking(uuid, index) {
+            const isCurrentlyMarked = photoMarking.get(uuid) || false;
+            photoMarking.set(uuid, !isCurrentlyMarked);
+            
+            // Update visual state
+            const photoItem = document.querySelector(`[data-photo-uuid="${uuid}"]`);
+            if (photoItem) {
+                if (!isCurrentlyMarked) {
+                    photoItem.classList.add('marked-for-deletion');
+                } else {
+                    photoItem.classList.remove('marked-for-deletion');
+                }
+            }
+            
+            updateMarkedCount();
+        }
+        
+        function updateMarkedCount() {
+            const markedCount = Array.from(photoMarking.values()).filter(marked => marked).length;
+            document.getElementById('marked-count').textContent = markedCount;
+            document.getElementById('mark-for-deletion-btn').disabled = markedCount === 0;
+        }
+        
+        function showOnlyMarked() {
+            const markedPhotos = Array.from(photoMarking.entries()).filter(([uuid, marked]) => marked);
+            if (markedPhotos.length === 0) {
+                alert('No photos marked for deletion yet');
+                return;
+            }
+            
+            // In real app, this would filter the grid
+            alert(`Showing ${markedPhotos.length} marked photos only (feature coming soon)`);
+        }
+        
+        function clearAllMarked() {
+            photoMarking.clear();
+            document.querySelectorAll('.photo-item').forEach(item => {
+                item.classList.remove('marked-for-deletion');
+            });
+            updateMarkedCount();
+        }
+        
+        async function markForDeletion() {
+            const markedPhotos = Array.from(photoMarking.entries()).filter(([uuid, marked]) => marked);
+            if (markedPhotos.length === 0) {
+                return;
+            }
+            
+            const confirmMessage = `Mark ${markedPhotos.length} selected photos for deletion?\n\nThis will:\n• Add "marked-for-deletion" tag to photo metadata\n• Allow you to find and review tagged photos\n• Enable manual deletion when ready\n\nNo photos will be deleted automatically.`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            // Disable button and show loading state
+            const deleteBtn = document.getElementById('mark-for-deletion-btn');
+            const originalText = deleteBtn.textContent;
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = '🏷️ Tagging photos...';
+            
+            try {
+                const photoUuids = markedPhotos.map(([uuid, marked]) => uuid);
+                
+                const response = await fetch('/api/mark-blur-photos-for-deletion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ photo_uuids: photoUuids })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // Show success message with next steps
+                    const nextSteps = result.next_steps.join('\n• ');
+                    alert(`✅ Success!\n\n• ${nextSteps}`);
+                    
+                    // Clear the marked photos since they're now tagged
+                    photoMarking.clear();
+                    
+                    // Update visual state - remove marked styling from all photos
+                    document.querySelectorAll('.photo-item.marked-for-deletion').forEach(item => {
+                        item.classList.remove('marked-for-deletion');
+                    });
+                    
+                    updateMarkedCount();
+                    
+                } else {
+                    throw new Error(result.error || 'Failed to mark photos for deletion');
+                }
+                
+            } catch (error) {
+                console.error('Error marking photos for deletion:', error);
+                alert(`❌ Error: ${error.message}\n\nPlease try again or check the console for details.`);
+                
+            } finally {
+                // Reset button state
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = originalText;
+            }
+        }
+        
+        function viewBlurryPhotos() {
+            // Navigate to the photo review interface
+            window.location.href = '/blur-results';
+        }
+        
+        function startNewAnalysis() {
+            // Reset interface for new analysis
+            document.getElementById('results-section').classList.remove('visible');
+            document.getElementById('analyze-btn').disabled = false;
+            
+            // Reset progress
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('progress-text').textContent = 'Ready for new analysis';
         }
 
         function saveFilters() {
             alert('Filter set saving will be implemented in a future update.');
+        }
+
+        // Full-screen preview functionality
+        function openPreview(photoIndex) {
+            if (!currentPhotos || currentPhotos.length === 0) return;
+            
+            // Use the already-sorted photos from displayAnalysisResults
+            currentPreviewIndex = photoIndex;
+            
+            const photo = currentPhotos[currentPreviewIndex];
+            if (!photo) return;
+            
+            // Show modal
+            const modal = document.getElementById('preview-modal');
+            modal.classList.add('visible');
+            
+            // Reset loading state
+            const loading = document.getElementById('preview-loading');
+            const image = document.getElementById('preview-image');
+            loading.style.display = 'block';
+            loading.textContent = 'Loading full-size image...';
+            image.style.display = 'none';
+            
+            // Load full-size image
+            image.src = `/api/full-image/${photo.uuid}`;
+            
+            // Update navigation buttons
+            updatePreviewNavigation();
+            
+            // Update photo details
+            updatePreviewDetails(photo);
+            
+            // Update mark button
+            updatePreviewMarkButton(photo.uuid);
+            
+            // Add global keyboard handlers
+            document.addEventListener('keydown', handlePreviewKeyboard);
+        }
+        
+        function closePreview() {
+            const modal = document.getElementById('preview-modal');
+            modal.classList.remove('visible');
+            
+            // Remove global keyboard handlers
+            document.removeEventListener('keydown', handlePreviewKeyboard);
+            
+            currentPreviewIndex = -1;
+        }
+        
+        function navigatePreview(direction) {
+            if (currentPhotos.length === 0) return;
+            
+            currentPreviewIndex += direction;
+            
+            // Wrap around
+            if (currentPreviewIndex < 0) {
+                currentPreviewIndex = currentPhotos.length - 1;
+            } else if (currentPreviewIndex >= currentPhotos.length) {
+                currentPreviewIndex = 0;
+            }
+            
+            const photo = currentPhotos[currentPreviewIndex];
+            if (!photo) return;
+            
+            // Reset loading state
+            const loading = document.getElementById('preview-loading');
+            const image = document.getElementById('preview-image');
+            loading.style.display = 'block';
+            loading.textContent = 'Loading full-size image...';
+            image.style.display = 'none';
+            
+            // Load new image
+            image.src = `/api/full-image/${photo.uuid}`;
+            
+            // Update navigation and details
+            updatePreviewNavigation();
+            updatePreviewDetails(photo);
+            updatePreviewMarkButton(photo.uuid);
+        }
+        
+        function updatePreviewNavigation() {
+            const prevBtn = document.getElementById('preview-nav-prev');
+            const nextBtn = document.getElementById('preview-nav-next');
+            
+            // Always show navigation if there are multiple photos
+            if (currentPhotos.length <= 1) {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+            } else {
+                prevBtn.style.display = 'flex';
+                nextBtn.style.display = 'flex';
+            }
+        }
+        
+        function updatePreviewDetails(photo) {
+            const details = document.getElementById('preview-details');
+            
+            const blurLabels = {
+                'very-blurry': 'Very Blurry',
+                'blurry': 'Blurry',
+                'slightly-blurry': 'Slightly Blurry'
+            };
+            
+            const formatFileSize = (sizeInMB) => {
+                if (sizeInMB < 1) {
+                    return `${(sizeInMB * 1024).toFixed(0)} KB`;
+                }
+                return `${sizeInMB.toFixed(1)} MB`;
+            };
+            
+            details.innerHTML = `
+                <div class="detail-item">
+                    <strong>Quality:</strong> ${blurLabels[photo.blur_level] || photo.blur_level}
+                </div>
+                <div class="detail-item">
+                    <strong>Blur Score:</strong> ${photo.blur_score.toFixed(2)}
+                </div>
+                <div class="detail-item">
+                    <strong>Size:</strong> ${formatFileSize(photo.file_size_mb)}
+                </div>
+                ${photo.resolution ? `<div class="detail-item"><strong>Resolution:</strong> ${photo.resolution}</div>` : ''}
+                <div class="detail-item">
+                    <strong>Photo:</strong> ${currentPreviewIndex + 1} of ${currentPhotos.length}
+                </div>
+            `;
+        }
+        
+        function updatePreviewMarkButton(photoUuid) {
+            const markBtn = document.getElementById('preview-mark-btn');
+            const isMarked = photoMarking.get(photoUuid) || false;
+            
+            if (isMarked) {
+                markBtn.textContent = '↩️ Unmark';
+                markBtn.classList.add('marked');
+            } else {
+                markBtn.textContent = '🗑️ Mark for Deletion';
+                markBtn.classList.remove('marked');
+            }
+        }
+        
+        function togglePreviewMarking() {
+            if (currentPreviewIndex < 0 || !currentPhotos[currentPreviewIndex]) return;
+            
+            const photo = currentPhotos[currentPreviewIndex];
+            togglePhotoMarking(photo.uuid, currentPreviewIndex);
+            updatePreviewMarkButton(photo.uuid);
+        }
+        
+        function openInPhotosApp(photoUuid) {
+            // Find the photo data
+            const photo = analysisResults.results.find(p => p.uuid === photoUuid);
+            if (!photo || !photo.path) {
+                alert('Cannot open photo - path not available');
+                return;
+            }
+            
+            // Call backend API to open in Photos app
+            fetch('/api/open-in-photos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ photo_path: photo.path })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) {
+                    alert(`Failed to open photo: ${result.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Failed to open photo in Photos app:', error);
+                alert('Failed to open photo in Photos app');
+            });
+        }
+        
+        function handlePreviewKeyboard(e) {
+            // Only handle if modal is visible
+            if (!document.getElementById('preview-modal').classList.contains('visible')) return;
+            
+            switch (e.key) {
+                case 'Escape':
+                    e.preventDefault();
+                    closePreview();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    navigatePreview(-1);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    navigatePreview(1);
+                    break;
+                case 'd':
+                case 'D':
+                    e.preventDefault();
+                    togglePreviewMarking();
+                    break;
+                case 'o':
+                case 'O':
+                    e.preventDefault();
+                    if (currentPhotos[currentPreviewIndex]) {
+                        openInPhotosApp(currentPhotos[currentPreviewIndex].uuid);
+                    }
+                    break;
+            }
         }
 
         // Quintile button functionality
@@ -764,7 +1789,7 @@
             });
 
             // Initialize the interface
-            loadPhotosData();
+            loadBucketsData();
         });
     </script>
 </body>

@@ -48,6 +48,15 @@ scanner = PhotoScanner()
 analyzer = LibraryAnalyzer()
 tagger = PhotoTagger()
 blur_detector = BlurDetector()
+
+# Global progress tracking
+analysis_progress = {
+    'current': 0,
+    'total': 0,
+    'status': 'idle',
+    'message': '',
+    'bucket_id': None
+}
 lazy_loader = LazyPhotoLoader(analyzer, scanner)
 cached_groups = None
 cached_timestamp = None
@@ -3773,6 +3782,152 @@ def api_open_photo(photo_uuid):
             'error': f'Error opening photo: {str(e)}'
         }), 500
 
+@app.route('/api/blur-analysis-progress')
+def api_blur_analysis_progress():
+    """Get current progress of blur analysis."""
+    return jsonify(analysis_progress)
+
+@app.route('/api/mark-blur-photos-for-deletion', methods=['POST'])
+def api_mark_blur_photos_for_deletion():
+    """Mark selected blur photos for deletion by adding tags."""
+    try:
+        data = request.get_json()
+        photo_uuids = data.get('photo_uuids', [])
+        
+        if not photo_uuids:
+            return jsonify({
+                'success': False,
+                'error': 'No photo UUIDs provided'
+            }), 400
+        
+        # Generate session ID for this tagging operation
+        session_id = f"blur_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        print(f"🏷️ Marking {len(photo_uuids)} blur photos for deletion with session: {session_id}")
+        
+        # Tag photos for deletion using the existing tagger
+        tagging_result = tagger.tag_photos_for_deletion(photo_uuids, session_id)
+        
+        # Add UUIDs to persistent tracking to prevent reappearance
+        if tagging_result.photos_tagged > 0:
+            scanner.add_processed_uuids(photo_uuids)
+            print(f"💾 Added {len(photo_uuids)} UUIDs to persistent tracking")
+        
+        return jsonify({
+            'success': True,
+            'photos_tagged': tagging_result.photos_tagged,
+            'album_name': tagging_result.album_name,
+            'session_id': session_id,
+            'message': f"Successfully tagged {tagging_result.photos_tagged} photos for deletion",
+            'next_steps': [
+                f"✅ {tagging_result.photos_tagged} photos tagged with 'marked-for-deletion' keyword",
+                "🔍 Search Photos app for 'marked-for-deletion' keyword to find tagged photos",
+                "👀 Review tagged photos to confirm deletion", 
+                "🗑️ Manually delete photos you want to remove"
+            ]
+        })
+        
+    except Exception as e:
+        print(f"❌ Error marking blur photos for deletion: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to mark photos for deletion: {str(e)}'
+        }), 500
+
+@app.route('/api/open-in-photos', methods=['POST'])
+def api_open_in_photos():
+    """Open photo in Photos app using photo path from request body."""
+    try:
+        data = request.get_json()
+        if not data or 'photo_path' not in data:
+            return jsonify({'success': False, 'error': 'photo_path required in request body'}), 400
+        
+        photo_path = data['photo_path']
+        
+        # Extract filename for search
+        import os
+        filename = os.path.basename(photo_path)
+        search_filename = filename
+        if '.' in search_filename:
+            search_filename = search_filename.rsplit('.', 1)[0]  # Remove extension
+        
+        # Simple AppleScript to open Photos app and search for the photo
+        applescript = f'''
+        on run
+            tell application "Photos"
+                activate
+                delay 1
+                
+                try
+                    -- Search for the photo by filename
+                    set searchText to "{search_filename}"
+                    tell application "System Events"
+                        tell process "Photos"
+                            -- Press Cmd+F to open search
+                            key code 3 using command down
+                            delay 0.5
+                            -- Type the filename
+                            keystroke searchText
+                            delay 1
+                        end tell
+                    end tell
+                    return "success: searched for {search_filename}"
+                on error errMsg
+                    return "error: " & errMsg
+                end try
+            end tell
+        end run
+        '''
+        
+        print(f"🔍 Opening Photos app and searching for: {search_filename}")
+        
+        import subprocess
+        result = subprocess.run(
+            ['osascript', '-e', applescript], 
+            capture_output=True, 
+            text=True, 
+            timeout=20
+        )
+        
+        print(f"📄 AppleScript result: {result.returncode}")
+        if result.stderr:
+            print(f"⚠️ AppleScript stderr: {result.stderr}")
+        if result.stdout:
+            print(f"📝 AppleScript stdout: {result.stdout}")
+        
+        if result.returncode == 0:
+            return jsonify({
+                'success': True, 
+                'message': f'Opened Photos app and searched for "{search_filename}"'
+            })
+        else:
+            # If AppleScript fails, try simpler approach - just open Photos
+            simple_script = '''
+            tell application "Photos"
+                activate
+                delay 0.5
+            end tell
+            '''
+            
+            subprocess.run(['osascript', '-e', simple_script], timeout=5)
+            
+            return jsonify({
+                'success': False, 
+                'error': f'Could not search automatically. Photos app opened. Search manually for: {search_filename}',
+                'search_term': search_filename
+            })
+                
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False, 
+            'error': 'AppleScript timeout - Photos app may be unresponsive'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': f'Error opening photo: {str(e)}'
+        }), 500
+
 @app.route('/api/debug-filename/<filename>')
 def api_debug_filename(filename):
     """Debug endpoint to search for photos by filename and check their keyword status."""
@@ -4104,8 +4259,8 @@ def api_complete_workflow():
                 'timestamp': datetime.now().isoformat(),
                 'next_steps': [
                     f"✅ {tagging_result.photos_tagged} photos tagged with 'marked-for-deletion' keyword",
-                    f"📁 Check Photos app for smart album: '{tagging_result.album_name}'",
-                    "👀 Review photos in the smart album",
+                    "🔍 Search Photos app for 'marked-for-deletion' keyword to find tagged photos",
+                    "👀 Review tagged photos to confirm deletion",
                     "🗑️ Manually delete photos you want to remove",
                     f"📄 Deletion lists exported to Desktop: {len(tagging_result.export_files)} files"
                 ] if tagging_result.photos_tagged > 0 else [
@@ -4117,7 +4272,7 @@ def api_complete_workflow():
             'export_data': export_data,
             'workflow_guidance': {
                 'tagging_status': f"Tagged {tagging_result.photos_tagged} of {len(photo_uuids)} photos successfully",
-                'album_status': f"Smart album {'created' if tagging_result.smart_album_created else 'creation attempted (may require manual setup)'}",
+                'album_status': "Smart album creation disabled - use keyword search instead",
                 'export_status': f"Exported {len(tagging_result.export_files)} files to Desktop",
                 'safety_reminder': "⚠️ This tool tags photos but does not delete them. You maintain full control over deletions."
             }
@@ -5236,11 +5391,11 @@ def api_analyze_blur():
     try:
         data = request.get_json()
         
-        # Get analysis parameters
+        # Get analysis parameters with updated, more conservative thresholds
         blur_thresholds = data.get('blur_thresholds', {
-            'very_blurry': 50,
-            'blurry': 100,
-            'slightly_blurry': 200
+            'very_blurry': 100,
+            'blurry': 300,
+            'slightly_blurry': 600
         })
         
         # Update detector thresholds
@@ -5250,35 +5405,93 @@ def api_analyze_blur():
             blur_thresholds['slightly_blurry']
         )
         
-        # Get photos to analyze (from filters)
-        filters = data.get('filters', {})
+        # Get bucket_id from request
+        bucket_id = data.get('bucket_id')
+        if not bucket_id:
+            return jsonify({
+                'success': False,
+                'error': 'bucket_id is required'
+            }), 400
         
-        # Use existing photo scanning logic
+        # Get all photos and sort chronologically (same as photo-buckets endpoint)
         photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
         
-        # Apply year filter if specified
-        year_filter = filters.get('year')
-        if year_filter and year_filter != 'all':
-            if isinstance(year_filter, list):
-                photos = [p for p in photos if str(p.date.year) in year_filter]
+        # Sort photos by date (oldest to newest), including photos without dates
+        photos_with_dates = []
+        photos_without_dates = []
+        
+        for photo in photos:
+            if hasattr(photo, 'date') and photo.date:
+                photos_with_dates.append((photo.date, photo))
             else:
-                photos = [p for p in photos if str(p.date.year) == year_filter]
+                photos_without_dates.append(photo)
         
-        # Apply file type filter
-        file_types = filters.get('file_types', [])
-        if file_types and 'heic' not in [ft.lower() for ft in file_types]:
-            # Filter by specified types
-            photos = [p for p in photos if any(p.path.lower().endswith(f'.{ft.lower()}') for ft in file_types)]
+        photos_with_dates.sort(key=lambda x: x[0])
+        # Put photos without dates at the end
+        sorted_photos = [photo for date, photo in photos_with_dates] + photos_without_dates
         
-        # Prepare for blur analysis
+        print(f"📊 Photo sorting: {len(photos_with_dates)} with dates, {len(photos_without_dates)} without dates, {len(sorted_photos)} total")
+        
+        # Extract bucket number from bucket_id (e.g., "bucket_3" -> 3)
+        try:
+            bucket_num = int(bucket_id.split('_')[1])
+            bucket_size = 1000
+            start_idx = (bucket_num - 1) * bucket_size
+            end_idx = start_idx + bucket_size
+            
+            # Get photos for this specific bucket
+            photos = sorted_photos[start_idx:end_idx]
+            
+            if not photos:
+                return jsonify({
+                    'success': False,
+                    'error': f'Bucket {bucket_id} is empty or does not exist'
+                }), 400
+                
+        except (ValueError, IndexError):
+            return jsonify({
+                'success': False,
+                'error': f'Invalid bucket_id: {bucket_id}'
+            }), 400
+        
+        # Prepare for blur analysis (exactly 500 photos or less for final bucket)
         image_paths = []
-        for photo in photos[:1000]:  # Limit to 1000 photos for performance
-            if photo.path and os.path.exists(photo.path):
-                image_paths.append((photo.path, photo.uuid))
+        photos_without_path = 0
+        photos_path_not_exists = 0
         
-        # Perform blur analysis
-        print(f"🔍 Starting blur analysis of {len(image_paths)} photos...")
-        results = blur_detector.analyze_batch(image_paths)
+        for photo in photos:
+            if not photo.path:
+                photos_without_path += 1
+                continue
+            if not os.path.exists(photo.path):
+                photos_path_not_exists += 1
+                continue
+            image_paths.append((photo.path, photo.uuid))
+        
+        print(f"📊 Path filtering: {len(photos)} photos in bucket, {len(image_paths)} with valid paths, {photos_without_path} without path, {photos_path_not_exists} path not found")
+        
+        # Set up progress tracking
+        analysis_progress['current'] = 0
+        analysis_progress['total'] = len(image_paths)
+        analysis_progress['status'] = 'analyzing'
+        analysis_progress['message'] = f'Starting analysis of {len(image_paths)} photos...'
+        analysis_progress['bucket_id'] = bucket_id
+        
+        def progress_callback(current, total):
+            """Update progress for frontend polling."""
+            analysis_progress['current'] = current
+            analysis_progress['total'] = total
+            analysis_progress['status'] = 'analyzing'
+            analysis_progress['message'] = f'Analyzed {current} of {total} photos...'
+            print(f"📊 Progress: {current}/{total} ({current/total*100:.1f}%)")
+        
+        # Perform blur analysis with progress callback
+        print(f"🔍 Starting blur analysis of {len(image_paths)} photos in {bucket_id}...")
+        results = blur_detector.analyze_batch(image_paths, progress_callback=progress_callback)
+        
+        # Mark analysis as complete
+        analysis_progress['status'] = 'complete'
+        analysis_progress['message'] = f'Analysis complete! Found {len([r for r in results if r.blur_level != "sharp"])} photos with quality issues.'
         
         # Generate statistics
         stats = blur_detector.get_statistics(results)
@@ -5298,6 +5511,7 @@ def api_analyze_blur():
         
         return jsonify({
             'success': True,
+            'bucket_id': bucket_id,
             'results': formatted_results,
             'statistics': stats,
             'thresholds_used': blur_thresholds,
@@ -5392,6 +5606,246 @@ def api_blur_library_stats():
         
     except Exception as e:
         print(f"❌ Error getting blur library stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/photo-buckets')
+def api_photo_buckets():
+    """Get photo library split into chronological 500-photo buckets."""
+    try:
+        # Get all photos sorted by date
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        
+        # Sort photos by date (oldest to newest)
+        photos_with_dates = []
+        for photo in photos:
+            if hasattr(photo, 'date') and photo.date:
+                photos_with_dates.append((photo.date, photo))
+        
+        # Sort by date
+        photos_with_dates.sort(key=lambda x: x[0])
+        sorted_photos = [photo for date, photo in photos_with_dates]
+        
+        # Create buckets of 500 photos each, but prioritize locally available photos
+        bucket_size = 1000
+        buckets = []
+        
+        # Separate photos into locally available and iCloud-only
+        local_photos = [photo for photo in sorted_photos if photo.path and os.path.exists(photo.path)]
+        icloud_photos = [photo for photo in sorted_photos if not (photo.path and os.path.exists(photo.path))]
+        
+        print(f"📊 Photo distribution: {len(local_photos)} local, {len(icloud_photos)} iCloud-only")
+        
+        # Create buckets prioritizing local photos
+        all_buckets_photos = []
+        
+        # Fill buckets with mix of local and iCloud photos (prefer local)
+        for i in range(0, len(sorted_photos), bucket_size):
+            bucket_photos = sorted_photos[i:i + bucket_size]
+            if len(bucket_photos) == 0:
+                continue
+                
+            bucket_id = f"bucket_{i // bucket_size + 1}"
+            start_date = bucket_photos[0].date
+            end_date = bucket_photos[-1].date
+            
+            # Format date range
+            if start_date.year == end_date.year:
+                if start_date.month == end_date.month:
+                    date_range = f"{start_date.strftime('%b %Y')}"
+                else:
+                    date_range = f"{start_date.strftime('%b')} - {end_date.strftime('%b %Y')}"
+            else:
+                date_range = f"{start_date.strftime('%b %Y')} - {end_date.strftime('%b %Y')}"
+            
+            # Get sample photos (first 3 for thumbnails) and count types
+            sample_photos = []
+            local_count = 0
+            icloud_count = 0
+            
+            for photo in bucket_photos:
+                if photo.path and os.path.exists(photo.path):
+                    local_count += 1
+                    if len(sample_photos) < 3:
+                        sample_photos.append({
+                            'uuid': photo.uuid,
+                            'path': photo.path
+                        })
+                else:
+                    icloud_count += 1
+            
+            # Create descriptive bucket info
+            if local_count > 0 and icloud_count > 0:
+                count_description = f"{local_count} local, {icloud_count} iCloud"
+            elif local_count > 0:
+                count_description = f"{local_count} local photos"
+            else:
+                count_description = f"{icloud_count} iCloud photos"
+            
+            buckets.append({
+                'bucket_id': bucket_id,
+                'date_range': date_range,
+                'photo_count': len(bucket_photos),
+                'local_count': local_count,
+                'icloud_count': icloud_count,
+                'analyzable_count': local_count,  # Only local photos are immediately analyzable
+                'count_description': count_description,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+                'sample_photos': sample_photos
+            })
+        
+        return jsonify({
+            'success': True,
+            'buckets': buckets,
+            'total_photos': len(sorted_photos),
+            'total_buckets': len(buckets),
+            'bucket_size': bucket_size
+        })
+        
+    except Exception as e:
+        print(f"❌ Error creating photo buckets: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/thumbnails/<uuid>')
+def api_get_thumbnail(uuid):
+    """Get thumbnail for a specific photo UUID."""
+    try:
+        # Find the photo by UUID
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        
+        target_photo = None
+        for photo in photos:
+            if photo.uuid == uuid:
+                target_photo = photo
+                break
+        
+        if not target_photo or not target_photo.path or not os.path.exists(target_photo.path):
+            return jsonify({'error': 'Photo not found'}), 404
+        
+        # Generate or serve thumbnail
+        thumbnail_path = generate_thumbnail(target_photo.path, uuid)
+        
+        if thumbnail_path and os.path.exists(thumbnail_path):
+            return send_file(thumbnail_path, mimetype='image/jpeg')
+        else:
+            return jsonify({'error': 'Thumbnail generation failed'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error serving thumbnail for {uuid}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def generate_thumbnail(photo_path, uuid, size=(200, 200)):
+    """Generate a thumbnail for a photo."""
+    try:
+        from PIL import Image
+        import hashlib
+        
+        # Create thumbnail directory
+        thumb_dir = os.path.join(THUMBNAIL_DIR, 'blur_analysis')
+        os.makedirs(thumb_dir, exist_ok=True)
+        
+        # Generate thumbnail filename
+        thumb_filename = f"{uuid}_thumb.jpg"
+        thumb_path = os.path.join(thumb_dir, thumb_filename)
+        
+        # Return existing thumbnail if it exists
+        if os.path.exists(thumb_path):
+            return thumb_path
+        
+        # Generate new thumbnail
+        with Image.open(photo_path) as img:
+            # Convert to RGB if necessary (handles HEIC, PNG with transparency, etc.)
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Create thumbnail
+            img.thumbnail(size, Image.Resampling.LANCZOS)
+            
+            # Save as JPEG
+            img.save(thumb_path, 'JPEG', quality=85, optimize=True)
+            
+            return thumb_path
+            
+    except Exception as e:
+        print(f"❌ Error generating thumbnail for {photo_path}: {e}")
+        return None
+
+@app.route('/api/diagnose-paths')
+def api_diagnose_paths():
+    """Diagnostic endpoint to understand why photos have missing paths."""
+    try:
+        # Get first 100 photos for analysis
+        photos, excluded_count = scanner.get_unprocessed_photos(include_videos=False)
+        sample_photos = photos[:100]
+        
+        analysis = {
+            'total_sampled': len(sample_photos),
+            'with_path': 0,
+            'without_path': 0,
+            'path_exists': 0,
+            'path_not_found': 0,
+            'icloud_photos': 0,
+            'video_count': 0,
+            'edited_photos': 0,
+            'in_trash': 0,
+            'sample_missing_paths': []
+        }
+        
+        for photo in sample_photos:
+            # Count basic stats
+            if photo.path:
+                analysis['with_path'] += 1
+                if os.path.exists(photo.path):
+                    analysis['path_exists'] += 1
+                else:
+                    analysis['path_not_found'] += 1
+            else:
+                analysis['without_path'] += 1
+                # Collect details about photos without paths
+                if len(analysis['sample_missing_paths']) < 20:
+                    analysis['sample_missing_paths'].append({
+                        'uuid': photo.uuid,
+                        'date': photo.date.isoformat() if photo.date else None,
+                        'ismissing': getattr(photo, 'ismissing', None),
+                        'incloud': getattr(photo, 'incloud', None),  
+                        'iscloudasset': getattr(photo, 'iscloudasset', None),
+                        'isreference': getattr(photo, 'isreference', None),
+                        'intrash': photo.intrash,
+                        'hasadjustments': photo.hasadjustments,
+                        'isphoto': photo.isphoto,
+                        'ismovie': photo.ismovie,
+                        'filename': getattr(photo, 'filename', None),
+                        'original_filename': getattr(photo, 'original_filename', None)
+                    })
+            
+            # Count special cases
+            if getattr(photo, 'iscloudasset', False) or getattr(photo, 'incloud', False):
+                analysis['icloud_photos'] += 1
+            if photo.ismovie:
+                analysis['video_count'] += 1
+            if photo.hasadjustments:
+                analysis['edited_photos'] += 1
+            if photo.intrash:
+                analysis['in_trash'] += 1
+                
+        return jsonify({
+            'success': True,
+            'analysis': analysis,
+            'recommendations': [
+                "Photos without paths are likely iCloud photos not downloaded locally",
+                "Use photo.export() method to download iCloud photos on demand",
+                "Consider filtering out videos if not needed for blur analysis",
+                "Trash photos should be excluded from analysis"
+            ]
+        })
+        
+    except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)

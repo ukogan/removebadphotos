@@ -98,17 +98,12 @@ class PhotoTagger:
             print(f"❌ {error_msg}")
             errors.append(error_msg)
             
-        # Create smart album with session ID format
-        timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        album_name = f"Marked for Deletion - {timestamp}"
-        smart_album_created = self.create_smart_album(album_name, deletion_keyword, session_keyword)
-        
         return TaggingResult(
             session_id=session_id,
             photos_tagged=photos_tagged,
             photos_failed=photos_failed,
-            smart_album_created=smart_album_created,
-            album_name=album_name,
+            smart_album_created=False,  # Smart album creation disabled
+            album_name="",  # No album created
             export_files=[],  # Will be filled by export functions
             errors=errors
         )
@@ -159,17 +154,12 @@ class PhotoTagger:
                 errors.append(error_msg)
                 photos_failed += 1
         
-        # Create smart album with session ID format
-        timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        album_name = f"Marked for Deletion - {timestamp}"
-        smart_album_created = self.create_smart_album_applescript(album_name, deletion_keyword, session_keyword)
-        
         return TaggingResult(
             session_id=session_id,
             photos_tagged=photos_tagged,
             photos_failed=photos_failed,
-            smart_album_created=smart_album_created,
-            album_name=album_name,
+            smart_album_created=False,  # Smart album creation disabled
+            album_name="",  # No album created
             export_files=[],
             errors=errors
         )
